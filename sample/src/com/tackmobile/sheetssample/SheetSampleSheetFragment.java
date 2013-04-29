@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import com.tackmobile.sheets.SheetFragment;
 
-public class MySheetFragment extends SheetFragment {
+public class SheetSampleSheetFragment extends SheetFragment {
 
   public static final String KEY_COLOR = "keyColor";
 
@@ -32,9 +32,9 @@ public class MySheetFragment extends SheetFragment {
     view.findViewById(R.id.btn_add_sheet).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent addIntent = new Intent(MainActivity.ACTION_ADD_SHEET);
-        addIntent.putExtra(MainActivity.EXTRA_SHEET_CLASS_NAME, MySheetFragment.class.getCanonicalName());
-        addIntent.putExtra(MainActivity.EXTRA_ARGS, getRandomColorArgs());
+        Intent addIntent = new Intent(SheetSampleMainActivity.ACTION_ADD_SHEET);
+        addIntent.putExtra(SheetSampleMainActivity.EXTRA_SHEET_CLASS_NAME, SheetSampleSheetFragment.class.getCanonicalName());
+        addIntent.putExtra(SheetSampleMainActivity.EXTRA_ARGS, getRandomColorArgs());
         LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(addIntent);
       }
     });
@@ -42,12 +42,20 @@ public class MySheetFragment extends SheetFragment {
     view.findViewById(R.id.btn_pop_sheet).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent popIntent = new Intent(MainActivity.ACTION_POP_SHEET);
+        Intent popIntent = new Intent(SheetSampleMainActivity.ACTION_POP_SHEET);
         LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(popIntent);
       }
     });
+    
+    view.findViewById(R.id.btn_pop_all_sheets).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        Intent popAllIntent = new Intent(SheetSampleMainActivity.ACTION_POP_ALL_SHEETS);
+        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(popAllIntent);
+      }
+    });
 
-    int viewIndex = args.getInt(MainActivity.KEY_VIEW_INDEX);
+    int viewIndex = args.getInt(SheetSampleMainActivity.KEY_VIEW_INDEX);
     TextView textViewIndex = (TextView) view.findViewById(R.id.text_view_index);
     textViewIndex.setText("View Index : "+viewIndex);
   }
@@ -59,7 +67,7 @@ public class MySheetFragment extends SheetFragment {
     g = Math.random() * 255;
     b = Math.random() * 255;
     int color = Color.rgb(r.intValue(), g.intValue(), b.intValue());
-    args.putInt(MySheetFragment.KEY_COLOR, color);
+    args.putInt(SheetSampleSheetFragment.KEY_COLOR, color);
     return args;
   }
 }

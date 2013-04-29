@@ -19,6 +19,13 @@
 		android:text="Pop Top Sheet"
 		tools:ignore="HardcodedText" />
 
+	<Button
+		android:id="@+id/btn_pop_all_sheets"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Pop All Sheets"
+		tools:ignore="HardcodedText" />
+
 	<TextView
 		android:id="@+id/text_view_index"
 		android:layout_width="wrap_content"

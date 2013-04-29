@@ -109,6 +109,11 @@ public abstract class FragmentSheetAdapter {
     notifyDataSetChanged();
   }
   
+  public void removeAllFragments() {
+    mFragments.clear();
+    notifyDataSetChanged();
+  }
+  
   public SheetFragment instantiateItem(ViewGroup container, int position) {
     // If we already have this item instantiated, there is nothing
     // to do.  This can happen when we are restoring the entire pager

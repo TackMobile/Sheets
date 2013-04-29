@@ -15,13 +15,15 @@ import com.tackmobile.sheets.SheetFragment;
 import com.tackmobile.sheets.SheetLayout;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter;
 
-public class MainActivity extends FragmentActivity {
+public class SheetSampleMainActivity extends FragmentActivity {
 
   private static final String TAG = "MainActivity";
 
   public static final String ACTION_ADD_SHEET = "com.tackmobile.sheets.ACTION_ADD_SHEET";
 
   public static final String ACTION_POP_SHEET = "com.tackmobile.sheets.ACTION_POP_SHEET";
+  
+  public static final String ACTION_POP_ALL_SHEETS = "com.tackmobile.sheets.ACTION_POP_ALL_SHEETS";
 
   public static final String EXTRA_SHEET_CLASS_NAME = "com.tackmobile.sheets.EXTRA_SHEET_CLASS";
 
@@ -50,6 +52,7 @@ public class MainActivity extends FragmentActivity {
     LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
     lbm.registerReceiver(mAddBroadcastReceiver, new IntentFilter(ACTION_ADD_SHEET));
     lbm.registerReceiver(mPopBroadcastReceiver, new IntentFilter(ACTION_POP_SHEET));
+    lbm.registerReceiver(mPopBroadcastReceiver, new IntentFilter(ACTION_POP_ALL_SHEETS));
   }
 
   @Override
@@ -72,14 +75,14 @@ public class MainActivity extends FragmentActivity {
   }
   
   public void addSheetExplicitly(View view) {
-    Bundle args = MySheetFragment.getRandomColorArgs();
-    mAdapter.addSheetFragment(MySheetFragment.class, args);
+    Bundle args = SheetSampleSheetFragment.getRandomColorArgs();
+    mAdapter.addSheetFragment(SheetSampleSheetFragment.class, args);
   }
 
   public void addSheetImplicity(View view) {
     Intent intent = new Intent(ACTION_ADD_SHEET);
-    intent.putExtra(EXTRA_SHEET_CLASS_NAME, MySheetFragment.class.getCanonicalName());
-    intent.putExtra(EXTRA_ARGS, MySheetFragment.getRandomColorArgs());
+    intent.putExtra(EXTRA_SHEET_CLASS_NAME, SheetSampleSheetFragment.class.getCanonicalName());
+    intent.putExtra(EXTRA_ARGS, SheetSampleSheetFragment.getRandomColorArgs());
     LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
   }
 
@@ -118,10 +121,14 @@ public class MainActivity extends FragmentActivity {
   private BroadcastReceiver mPopBroadcastReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {
-      if (!ACTION_POP_SHEET.equals(intent.getAction()))
-        return;
-      if (mAdapter != null)
+      if (mAdapter == null) return;
+      
+      String intentAction = intent.getAction();
+      if (ACTION_POP_SHEET.equals(intentAction)) {
         mAdapter.popSheetFragment(mAdapter.getCount() - 1);
+      } else if (ACTION_POP_ALL_SHEETS.equals(intentAction)) {
+        mAdapter.popAllSheets();
+      }
     }
   };
 }

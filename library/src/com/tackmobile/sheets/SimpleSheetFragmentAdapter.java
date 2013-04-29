@@ -30,14 +30,18 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
     SheetDescriptor info = mDescriptors.get(position);
     return (SheetFragment) Fragment.instantiate(mContext, info.clazz.getName(), info.args);
   }
-
-  @Override
-  public void addSheetFragment(Class<? extends SheetFragment> clazz, Bundle args) {
+  
+  public void addSheetFragment(SheetDescriptor descriptor) {
     if (mDescriptors == null) {
       mDescriptors = new ArrayList<SheetDescriptor>();
     }
-    mDescriptors.add(new SheetDescriptor(clazz, args));
+    mDescriptors.add(descriptor);
     notifyDataSetChanged();
+  }
+
+  @Override
+  public void addSheetFragment(Class<? extends SheetFragment> clazz, Bundle args) {
+    addSheetFragment(new SheetDescriptor(clazz, args));
   }
 
   @Override
@@ -47,6 +51,11 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
 
     mDescriptors.remove(position);
     removeFragmentAtPosition(position);
+  }
+  
+  public void popAllSheets() {
+    mDescriptors.clear();
+    removeAllFragments();
   }
   
   @Override
