@@ -1,0 +1,3 @@
+[submodule "dependencies/NineOldAndroids"]
+	path = dependencies/NineOldAndroids
+	url = git://github.com/JakeWharton/NineOldAndroids.git

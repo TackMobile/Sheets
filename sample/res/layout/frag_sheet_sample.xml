@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical" >
+
+	<Button
+		android:id="@+id/btn_add_sheet"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Add New Sheet"
+		tools:ignore="HardcodedText" />
+
+	<Button
+		android:id="@+id/btn_pop_sheet"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Pop Top Sheet"
+		tools:ignore="HardcodedText" />
+
+	<TextView
+		android:id="@+id/text_view_index"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		tools:ignore="SelectableText" />
+
+</LinearLayout>
