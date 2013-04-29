@@ -3,15 +3,14 @@ package com.tackmobile.sheetssample;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.tackmobile.sheets.SheetFragment;
-
-public class SheetSampleSheetFragment extends SheetFragment {
+public class SheetSampleSheetFragment extends Fragment {
 
   public static final String KEY_COLOR = "keyColor";
 

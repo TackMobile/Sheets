@@ -5,13 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 
-import com.tackmobile.sheets.SheetFragment;
 import com.tackmobile.sheets.SheetLayout;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter;
 
@@ -112,8 +112,8 @@ public class SheetSampleMainActivity extends FragmentActivity {
       Bundle args = intent.hasExtra(EXTRA_ARGS) ? intent.getBundleExtra(EXTRA_ARGS) : new Bundle();
       args.putInt(KEY_VIEW_INDEX, mAdapter.getCount());
 
-      if (clazz == null || !(SheetFragment.class.isInstance(clazz))) {
-        mAdapter.addSheetFragment(clazz.asSubclass(SheetFragment.class), args);
+      if (clazz == null || !(Fragment.class.isInstance(clazz))) {
+        mAdapter.addSheetFragment(clazz.asSubclass(Fragment.class), args);
       }
     }
   };

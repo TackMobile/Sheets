@@ -26,9 +26,9 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
   }
 
   @Override
-  public SheetFragment getItem(int position) {
+  public Fragment getItem(int position) {
     SheetDescriptor info = mDescriptors.get(position);
-    return (SheetFragment) Fragment.instantiate(mContext, info.clazz.getName(), info.args);
+    return Fragment.instantiate(mContext, info.clazz.getName(), info.args);
   }
   
   public void addSheetFragment(SheetDescriptor descriptor) {
@@ -40,7 +40,7 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
   }
 
   @Override
-  public void addSheetFragment(Class<? extends SheetFragment> clazz, Bundle args) {
+  public void addSheetFragment(Class<? extends Fragment> clazz, Bundle args) {
     addSheetFragment(new SheetDescriptor(clazz, args));
   }
 
@@ -92,10 +92,10 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
   }
 
   public static class SheetDescriptor implements Parcelable {
-    Class<? extends SheetFragment> clazz;
+    Class<? extends Fragment> clazz;
     Bundle args;
 
-    public SheetDescriptor(Class<? extends SheetFragment> clazz, Bundle args) {
+    public SheetDescriptor(Class<? extends Fragment> clazz, Bundle args) {
       this.clazz = clazz;
       this.args = args;
     }
@@ -109,8 +109,8 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
       Class<?> clazz = null;
       try {
         clazz = cl.loadClass(className);
-        if (clazz != null && clazz.isInstance(SheetFragment.class)) {
-          this.clazz = clazz.asSubclass(SheetFragment.class);
+        if (clazz != null && clazz.isInstance(Fragment.class)) {
+          this.clazz = clazz.asSubclass(Fragment.class);
         }
       } catch (ClassNotFoundException e) {
         e.printStackTrace();

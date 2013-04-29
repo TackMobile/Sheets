@@ -9,6 +9,7 @@ import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.v4.app.Fragment;
 import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.MotionEventCompat;
@@ -517,7 +518,11 @@ public class SheetLayout extends ViewGroup {
     float eX = ev.getX();
     float left = ViewHelper.getX(topSheet);
     float right = left + topSheet.getMeasuredWidth();
-    return left < eX && eX < right && !info.sheetFragment.shouldInterceptLayoutMotionEvent(ev);
+    Fragment f = info.sheetFragment;
+    if (left < eX && eX < right && f instanceof ISheetFragment) {
+      return !((ISheetFragment)f).shouldInterceptLayoutMotionEvent(ev);
+    } else
+      return false; 
   }
   
   @Override
@@ -921,7 +926,7 @@ public class SheetLayout extends ViewGroup {
         //mAdapter.destroyItem(this, sheetInfoPos, sheetInfo.sheetFragment);
         View v = sheetInfo.sheetFragment.getView();
         if (v == null) {
-          SheetFragment f = mAdapter.instantiateItem(this, sheetInfo.position);
+          Fragment f = mAdapter.instantiateItem(this, sheetInfo.position);
           v = f.getView();
         }
         LayoutParams lp = (LayoutParams) sheetInfo.sheetFragment.getView().getLayoutParams();
@@ -1364,7 +1369,7 @@ public class SheetLayout extends ViewGroup {
   }
 
   private static class SheetInfo implements Parcelable {
-    SheetFragment sheetFragment;
+    Fragment sheetFragment;
     int position;
     float widthFactor;
     boolean needsLayout;

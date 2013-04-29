@@ -30,9 +30,9 @@ public abstract class FragmentSheetAdapter {
 
   private FragmentTransaction mCurTransaction = null;
 
-  private ArrayList<SheetFragment.SavedState> mSavedStates = new ArrayList<SheetFragment.SavedState>();
+  private ArrayList<Fragment.SavedState> mSavedStates = new ArrayList<Fragment.SavedState>();
   
-  private ArrayList<SheetFragment> mFragments = new ArrayList<SheetFragment>();
+  private ArrayList<Fragment> mFragments = new ArrayList<Fragment>();
   
   public FragmentSheetAdapter(FragmentManager fm) {
     mFragmentManager = fm;
@@ -40,9 +40,9 @@ public abstract class FragmentSheetAdapter {
 
   public abstract int getCount();
 
-  public abstract SheetFragment getItem(int position);
+  public abstract Fragment getItem(int position);
   
-  public abstract void addSheetFragment(Class<? extends SheetFragment> clazz, Bundle args);
+  public abstract void addSheetFragment(Class<? extends Fragment> clazz, Bundle args);
   
   public abstract void popSheetFragment(int position);
   
@@ -50,7 +50,7 @@ public abstract class FragmentSheetAdapter {
     return position;
   }
   
-  public SheetFragment findTopSheetFragment(ViewGroup container) {
+  public Fragment findTopSheetFragment(ViewGroup container) {
     if (mFragments.size() > 0)
       return mFragments.get(mFragments.size() - 1);
     else
@@ -87,7 +87,7 @@ public abstract class FragmentSheetAdapter {
   // Fragment specific methods
   //
   
-  public int getItemPosition(SheetFragment fragment) {
+  public int getItemPosition(Fragment fragment) {
     if (mFragments.contains(fragment))
       return mFragments.indexOf(fragment);
     else
@@ -114,13 +114,13 @@ public abstract class FragmentSheetAdapter {
     notifyDataSetChanged();
   }
   
-  public SheetFragment instantiateItem(ViewGroup container, int position) {
+  public Fragment instantiateItem(ViewGroup container, int position) {
     // If we already have this item instantiated, there is nothing
     // to do.  This can happen when we are restoring the entire pager
     // from its saved state, where the fragment manager has already
     // taken care of restoring the fragments we previously had instantiated.
     if (mFragments.size() > position) {
-      SheetFragment f = mFragments.get(position);
+      Fragment f = mFragments.get(position);
       if (f != null) {
         return f;
       }
@@ -130,10 +130,10 @@ public abstract class FragmentSheetAdapter {
       mCurTransaction = mFragmentManager.beginTransaction();
     }
     
-    SheetFragment fragment = getItem(position);
+    Fragment fragment = getItem(position);
     if (BuildConfig.DEBUG) Log.v(TAG, "Adding item\t #" + position + " f=" + fragment);
     if (mSavedStates.size() > position) {
-      SheetFragment.SavedState fss = mSavedStates.get(position);
+      Fragment.SavedState fss = mSavedStates.get(position);
       if (fss != null) {
         fragment.setInitialSavedState(fss);
       }
@@ -149,7 +149,7 @@ public abstract class FragmentSheetAdapter {
     return fragment;
   }
 
-  public void destroyItem(ViewGroup container, int position, SheetFragment f) {
+  public void destroyItem(ViewGroup container, int position, Fragment f) {
     if (mCurTransaction == null) {
       mCurTransaction = mFragmentManager.beginTransaction();
     }
@@ -232,12 +232,12 @@ public abstract class FragmentSheetAdapter {
         if (key.startsWith("f")) {
           int index = Integer.parseInt(key.substring(1));
           Fragment f = mFragmentManager.getFragment(bundle, key);
-          if (f != null && f instanceof SheetFragment) {
+          if (f != null) {
             while (mFragments.size() <= index) {
               mFragments.add(null);
             }
             f.setMenuVisibility(false);
-            mFragments.set(index, (SheetFragment) f);
+            mFragments.set(index, f);
           } else {
             Log.w(TAG, "Bad fragment at key " + key);
           }
