@@ -208,7 +208,6 @@ public class SheetLayout extends ViewGroup {
   private Animator.AnimatorListener mPopAnimationListener = new Animator.AnimatorListener() {
     @Override
     public void onAnimationStart(Animator animation) {
-      Log.d(TAG, "Animation onAnimationStart");
       mPopulatePending = true;
       mIsAnimating = true;
     }
@@ -219,7 +218,6 @@ public class SheetLayout extends ViewGroup {
     
     @Override
     public void onAnimationEnd(Animator animation) {
-      Log.d(TAG, "Animation onAnimationEnd");
       if (mAdapter == null) return;
       
       mAdapter.startUpdate(SheetLayout.this);
@@ -411,8 +409,7 @@ public class SheetLayout extends ViewGroup {
     
     switch (action) {
     case MotionEvent.ACTION_MOVE:
-      // This appears to never get called
-      Log.d(TAG, "!!! onInterceptTouchEvent ACTION_MOVE !!!");
+      Log.d(TAG, "onInterceptTouchEvent ACTION_MOVE !!!");
       
       // Determine if we should intercept the move event? (assuming we haven't already) 
       // ACTION_DOWN must have been over the top view, and ACTION_MOVE should be
@@ -472,7 +469,9 @@ public class SheetLayout extends ViewGroup {
       mLastMotionX = mInitialMotionX = ev.getX();
       mLastMotionY = ev.getY();
       mIsUnableToDrag = false;
-      if (thisTouchAllowed(ev)) {
+      boolean touchAllowed = thisTouchAllowed(ev);
+      Log.d(TAG, "touchAllowed = "+touchAllowed);
+      if (touchAllowed) {
         if (mScrollState == SCROLL_STATE_SETTLING) {
           // Let the user 'catch' the pager as it animates.
           mIsBeingDragged = true;
@@ -511,17 +510,14 @@ public class SheetLayout extends ViewGroup {
     final int childCount = getChildCount();
     if (childCount < 1 ) return false;
     
-    // we don't support left drags 
-    float eX = ev.getX();
-    if (mInitialMotionX > eX) return false;
-    
     View topSheet = getChildAt(getChildCount() - 1);
     SheetInfo info = infoForChild(topSheet);
     if (info == null || info.sheetFragment == null) return false;   // Can't touch a sheet that doesn't exist yet
     
-    int left = info.sheetFragment.getView().getLeft();      // TODO: Fix crash here that occurs on pop & after adding a few times
-    int right = info.sheetFragment.getView().getRight();
-    return left < eX && eX < right && info.sheetFragment.shouldInterceptLayoutMotionEvent(ev);
+    float eX = ev.getX();
+    float left = ViewHelper.getX(topSheet);
+    float right = left + topSheet.getMeasuredWidth();
+    return left < eX && eX < right && !info.sheetFragment.shouldInterceptLayoutMotionEvent(ev);
   }
   
   @Override
@@ -541,7 +537,7 @@ public class SheetLayout extends ViewGroup {
       // Don't allow touch/drags during animation
       return false;
     }
-
+    
     if (mVelocityTracker == null) {
       mVelocityTracker = VelocityTracker.obtain();
     }
@@ -553,15 +549,17 @@ public class SheetLayout extends ViewGroup {
     switch (action & MotionEventCompat.ACTION_MASK) {
     case MotionEvent.ACTION_DOWN:
       Log.d(TAG, "onTouchEvent ACTION_DOWN");
-      mPopulatePending = false;
-      populate();
-      //mIsBeingDragged = true;
-      //setScrollState(SCROLL_STATE_DRAGGING);
-
-      // Remember where the motion event started
-      mLastMotionX = mInitialMotionX = ev.getX();
-      mLastMotionY = ev.getY();
-      mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
+      //if (thisTouchAllowed(ev)) {
+        mPopulatePending = false;
+        populate();
+        //mIsBeingDragged = true;
+        //setScrollState(SCROLL_STATE_DRAGGING);
+  
+        // Remember where the motion event started
+        mLastMotionX = mInitialMotionX = ev.getX();
+        mLastMotionY = ev.getY();
+        mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
+      //}
       break;
     case MotionEvent.ACTION_MOVE:
       Log.d(TAG, "onTouchEvent ACTION_MOVE");
@@ -572,7 +570,7 @@ public class SheetLayout extends ViewGroup {
         final float y = MotionEventCompat.getY(ev, pointerIndex);
         final float yDiff = Math.abs(y - mLastMotionY);
         
-        if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
+        //if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
         if (xDiff > mTouchSlop && xDiff > yDiff) {
           if (DEBUG) Log.v(TAG, "Starting drag!");
           mIsBeingDragged = true;
@@ -663,27 +661,33 @@ public class SheetLayout extends ViewGroup {
     // Don't lose the rounded component
     mLastMotionX += newTopX - (int) newTopX;
     
-    Log.v(TAG, "performDrag() x:"+x+"\t mLastMotionX:"+mLastMotionX+"\t newTopX:"+newTopX);
+    //Log.v(TAG, "performDrag() x:"+x+"\t mLastMotionX:"+mLastMotionX+"\t newTopX:"+newTopX);
     
     // Translate relevant views to new X values
-    //topChild.scrollTo((int)newTopX, 0);
     ViewHelper.setX(topChild, newTopX);
     int next = getChildCount() - 2;
     View prevChild = topChild;
     View nextChild;
-    int prevLeft;
-    int nextRight;
+    float prevLeft = ViewHelper.getX(prevChild);
+    float nextRight;
+    float nextLeft;
+    int nextWidth;
     while (next >= 0) {
-      prevLeft = prevChild.getLeft() + prevChild.getScrollX();
       nextChild = getChildAt(next);
-      nextRight = nextChild.getRight() + nextChild.getScrollX();
+      nextWidth = nextChild.getMeasuredWidth();
+      nextLeft = ViewHelper.getX(nextChild);
+      nextRight = nextLeft + nextWidth;
       if (prevLeft > nextRight) {
-        //nextChild.scrollTo(nextRight - nextChild.getMeasuredWidth(), 0);
-        ViewHelper.setX(nextChild, nextRight - nextChild.getMeasuredWidth());
+        nextLeft = prevLeft - nextWidth;
+        ViewHelper.setX(nextChild, nextLeft);
+      } else if (nextLeft > prevLeft - nextWidth) {
+        nextLeft = Math.max(0, prevLeft - nextWidth);
+        ViewHelper.setX(nextChild, nextLeft);
       } else {
         break;
       }
       prevChild = nextChild;
+      prevLeft = nextLeft;
       next--;
     }
 
@@ -1022,12 +1026,12 @@ public class SheetLayout extends ViewGroup {
       }
     }
     
-    if (DEBUG) {
+    /*if (DEBUG) {
       Log.i(TAG, "Current page list:");
       for (int i=0; i<mItems.size(); i++) {
         Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
       }
-    }
+    }*/
 
     mAdapter.finishUpdate(this);
     
@@ -1039,15 +1043,7 @@ public class SheetLayout extends ViewGroup {
       sheetInfo.sheetFragment.getView().bringToFront();
     }
 
-    /*if (DEBUG) {
-      Log.i(TAG, "Current view list:");
-      for (int i=0; i<getChildCount(); i++) {
-        sheetInfo = infoForChild(getChildAt(i));
-        Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
-      }
-    }*/
-
-    // Check width measurement of current sheets
+    // Check width ement of current sheets
     // Update LayoutParams as needed.
     final int childCount = getChildCount();
     for (int i=0; i<childCount; i++) {
@@ -1158,8 +1154,8 @@ public class SheetLayout extends ViewGroup {
     for (int i = 0; i < size; ++i) {
       final View child = getChildAt(i);
       if (child.getVisibility() != GONE) {
-        if (DEBUG)
-          Log.v(TAG, "Measuring\t #" + i + " " + child.getClass().getSimpleName());
+        //if (DEBUG)
+        //  Log.v(TAG, "Measuring\t #" + i + " " + child.getClass().getSimpleName());
 
         final LayoutParams lp = (LayoutParams) child.getLayoutParams();
         if (lp != null) {
@@ -1199,13 +1195,12 @@ public class SheetLayout extends ViewGroup {
     final int heightSpec = MeasureSpec.makeMeasureSpec(clientHeight, MeasureSpec.EXACTLY);
     int childTop = paddingTop;
     int childLeft;
-    SheetInfo sheetInfo;
 
     for (int i = 0; i < count; i++) {
       final View child = getChildAt(i);
       if (child.getVisibility() != GONE) {
         final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-        if ((sheetInfo = infoForChild(child)) != null) {
+        if (infoForChild(child) != null) {
           if (lp.needsMeasure) {
             // This was added during layout and needs measurement.
             // Do it now that we know what we're working with.
@@ -1223,10 +1218,10 @@ public class SheetLayout extends ViewGroup {
               childLeft = 0;
           }
           
-          if (DEBUG) {
-            Log.v(TAG, "Positioning\t #" + i + " f=" + sheetInfo.sheetFragment.getClass().getSimpleName() + ":"
-                + childLeft + "," + childTop + " " + child.getMeasuredWidth() + "x" + child.getMeasuredHeight());
-          }
+          //if (DEBUG) {
+          //  Log.v(TAG, "Positioning\t #" + i + " f=" + sheetInfo.sheetFragment.getClass().getSimpleName() + ":"
+          //      + childLeft + "," + childTop + " " + child.getMeasuredWidth() + "x" + child.getMeasuredHeight());
+          //}
           
           if (lp.needsLayout) {
             child.layout(childLeft, childTop, childLeft + child.getMeasuredWidth(), childTop + child.getMeasuredHeight());
@@ -1236,9 +1231,7 @@ public class SheetLayout extends ViewGroup {
       }
     }
     
-    //if (animateAfterLayout) {
-      ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
-    //}
+    ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
 
     mFirstLayout = false;
   }
