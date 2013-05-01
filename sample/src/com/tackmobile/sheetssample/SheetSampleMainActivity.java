@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -33,7 +34,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
 
   private SheetLayout mSheetLayout;
 
-  private SimpleSheetFragmentAdapter mAdapter;
+  private SampleSheetAdapter mAdapter;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +42,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
     setContentView(R.layout.activity_main);
 
     mSheetLayout = (SheetLayout) findViewById(R.id.sheet_layout);
-    mAdapter = new SimpleSheetFragmentAdapter(this, getSupportFragmentManager());
+    mAdapter = new SampleSheetAdapter(this, getSupportFragmentManager());
     mSheetLayout.setAdapter(mAdapter);
   }
 
@@ -131,4 +132,16 @@ public class SheetSampleMainActivity extends FragmentActivity {
       }
     }
   };
+  
+  private static class SampleSheetAdapter extends SimpleSheetFragmentAdapter {
+    public SampleSheetAdapter(Context context, FragmentManager fm) {
+      super(context, fm);
+    }
+    
+    @Override
+    public void addSheetFragment(SheetDescriptor descriptor) {
+      descriptor.args.putInt(KEY_VIEW_INDEX, getCount());
+      super.addSheetFragment(descriptor);
+    }
+  }
 }

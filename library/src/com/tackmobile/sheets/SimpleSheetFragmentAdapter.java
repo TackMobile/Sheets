@@ -8,8 +8,9 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.view.ViewGroup;
 
-public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
+public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements ISheetListener {
 
   private static final String KEY_DESCRIPTORS = "descriptors";
   private ArrayList<SheetDescriptor> mDescriptors;
@@ -31,14 +32,6 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
     return Fragment.instantiate(mContext, info.clazz.getName(), info.args);
   }
   
-  public void addSheetFragment(SheetDescriptor descriptor) {
-    if (mDescriptors == null) {
-      mDescriptors = new ArrayList<SheetDescriptor>();
-    }
-    mDescriptors.add(descriptor);
-    notifyDataSetChanged();
-  }
-
   @Override
   public void addSheetFragment(Class<? extends Fragment> clazz, Bundle args) {
     addSheetFragment(new SheetDescriptor(clazz, args));
@@ -52,12 +45,36 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
     mDescriptors.remove(position);
     removeFragmentAtPosition(position);
   }
+
+  @Override
+  public void addSheetFragment(SheetDescriptor descriptor) {
+    if (mDescriptors == null) {
+      mDescriptors = new ArrayList<SheetDescriptor>();
+    }
+    mDescriptors.add(descriptor);
+    notifyDataSetChanged();
+  }
   
+  @Override
+  public void popTopSheetFragment() {
+    popSheetFragment(getCount() - 1);
+  }
+  
+  @Override
   public void popAllSheets() {
     mDescriptors.clear();
     removeAllFragments();
   }
   
+  @Override
+  public Fragment instantiateItem(ViewGroup container, int position) {
+    Fragment fragment = super.instantiateItem(container, position);
+    if (fragment instanceof ISheetFragment) {
+      ((ISheetFragment)fragment).setSheetListener(this);
+    }
+    return fragment;
+  }
+
   @Override
   public Parcelable saveState() {
     Bundle state = (Bundle) super.saveState();
@@ -92,8 +109,8 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter {
   }
 
   public static class SheetDescriptor implements Parcelable {
-    Class<? extends Fragment> clazz;
-    Bundle args;
+    public Class<? extends Fragment> clazz;
+    public Bundle args;
 
     public SheetDescriptor(Class<? extends Fragment> clazz, Bundle args) {
       this.clazz = clazz;

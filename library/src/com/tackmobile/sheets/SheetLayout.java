@@ -121,12 +121,15 @@ public class SheetLayout extends ViewGroup {
   
   private boolean mIsUnableToDrag;
   
+  private boolean mShadowEnabled;
+  
   private int mTouchSlop;
   
   // Motion event positions
   private float mLastMotionX;
   private float mLastMotionY;
   private float mInitialMotionX;
+  private float mInitialMotionY;
 
   private int mActivePointerId = INVALID_POINTER;
 
@@ -136,7 +139,6 @@ public class SheetLayout extends ViewGroup {
   private VelocityTracker mVelocityTracker;
   private int mMaximumVelocity;
   
-  private EdgeEffectCompat mLeftEdge;
   private EdgeEffectCompat mRightEdge;
 
   private boolean mFirstLayout = true;
@@ -265,8 +267,8 @@ public class SheetLayout extends ViewGroup {
 
   private void init(final Context context) {
     setWillNotDraw(false);
-    setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
-    setFocusable(true);
+    //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
+    //setFocusable(true);
 
     final ViewConfiguration configuration = ViewConfiguration.get(context);
     //final float density = context.getResources().getDisplayMetrics().density;
@@ -274,7 +276,6 @@ public class SheetLayout extends ViewGroup {
     mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(configuration);
     //mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
-    mLeftEdge = new EdgeEffectCompat(context);
     mRightEdge = new EdgeEffectCompat(context);
 
     //mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
@@ -382,6 +383,17 @@ public class SheetLayout extends ViewGroup {
   public FragmentSheetAdapter getAdapter() {
     return mAdapter;
   }
+  
+  public void setShadowEnabled(boolean enabled) {
+    if (mShadowEnabled != enabled) {
+      mShadowEnabled = enabled;
+      requestLayout();
+    }
+  }
+  
+  public boolean getShadowEnabled() {
+    return mShadowEnabled;
+  }
 
   private int getClientWidth() {
       return getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
@@ -397,26 +409,49 @@ public class SheetLayout extends ViewGroup {
   
   @Override
   public boolean onInterceptTouchEvent(MotionEvent ev) {
-    final int action = ev.getAction() & MotionEventCompat.ACTION_MASK;
+
+    /*
+     * This method JUST determines whether we want to intercept the motion.
+     * If we return true, onTouchEvent will be called and we do the actual
+     * scrolling there. If we return false, onTouchEvent will be called on 
+     * children views first, if they return false then SheetLayout.onTouchEvent
+     * will STILL be called.
+     */
     
     if (getChildCount() == 0) return false;
     
+    final int action = ev.getAction() & MotionEventCompat.ACTION_MASK;
     if (action == MotionEvent.ACTION_CANCEL || 
         action == MotionEvent.ACTION_UP || 
         (action != MotionEvent.ACTION_DOWN && mIsUnableToDrag)) {
       endDrag();
       return false;
+    }        
+    
+    // Nothing more to do here if we have decided whether or not we
+    // are dragging.
+    if (action != MotionEvent.ACTION_DOWN) {
+      if (mIsBeingDragged) {
+        if (DEBUG)
+          Log.v(TAG, "Intercept returning true! (mIsBeingDragged)");
+        return true;
+      }
+      if (mIsUnableToDrag) {
+        if (DEBUG)
+          Log.v(TAG, "Intercept returning false! (mIsUnableToDrag)");
+        return false;
+      }
     }
     
     switch (action) {
     case MotionEvent.ACTION_MOVE:
       Log.d(TAG, "onInterceptTouchEvent ACTION_MOVE !!!");
-      
+      /*
+       * If we got here, then mIsBeing dragged must be false still.
+       */
       // Determine if we should intercept the move event? (assuming we haven't already) 
-      // ACTION_DOWN must have been over the top view, and ACTION_MOVE should be
-      // in the right direction to intercept
       
-      /*final int activePointerId = mActivePointerId;
+      final int activePointerId = mActivePointerId;
       if (activePointerId == INVALID_POINTER) {
           // If we don't have a valid id, the touch down wasn't on content.
           break;
@@ -427,38 +462,39 @@ public class SheetLayout extends ViewGroup {
       final float xDiff = Math.abs(dx);
       final float y = MotionEventCompat.getY(ev, pointerIndex);
       final float yDiff = Math.abs(y - mInitialMotionY);
-      if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
+      //if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
 
-      if (dx != 0 && !isGutterDrag(mLastMotionX, dx) && 
-          canScroll(this, false, (int) dx, (int) x, (int) y)) {
-          // Nested view has scrollable area under this point. Let it be handled there.
-          mLastMotionX = x;
-          mLastMotionY = y;
-          mIsUnableToDrag = true;
-          return false;
+      if (dx != 0 && canScroll(this, false, (int) dx, (int) x, (int) y)) {
+        // Nested view has scrollable area under this point. Let it be handled there.
+        mLastMotionX = x;
+        mLastMotionY = y;
+        mIsUnableToDrag = true;
+        Log.d(TAG, "onInterceptTouchEvent Child can scroll. mIsUnableToDrag=true");
+        return false;
       }
       if (xDiff > mTouchSlop && xDiff * 0.5f > yDiff) {
-          if (DEBUG) Log.v(TAG, "Starting drag!");
-          mIsBeingDragged = true;
-          setScrollState(SCROLL_STATE_DRAGGING);
-          mLastMotionX = dx > 0 ? mInitialMotionX + mTouchSlop :
-                  mInitialMotionX - mTouchSlop;
-          mLastMotionY = y;
-          setScrollingCacheEnabled(true);
+        if (DEBUG)
+          Log.v(TAG, "onInterceptTouchEvent Starting drag!");
+        mLastMotionX = dx > 0 ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
+        mLastMotionY = y;
+        mIsBeingDragged = true;
+        setScrollState(SCROLL_STATE_DRAGGING);
+        setScrollingCacheEnabled(true);
       } else if (yDiff > mTouchSlop) {
-          // The finger has moved enough in the vertical
-          // direction to be counted as a drag...  abort
-          // any attempt to drag horizontally, to work correctly
-          // with children that have scrolling containers.
-          if (DEBUG) Log.v(TAG, "Starting unable to drag!");
-          mIsUnableToDrag = true;
+        // The finger has moved enough in the vertical
+        // direction to be counted as a drag... abort
+        // any attempt to drag horizontally, to work correctly
+        // with children that have scrolling containers.
+        if (DEBUG)
+          Log.v(TAG, "onInterceptTouchEvent Starting unable to drag!");
+        mIsUnableToDrag = true;
       }
       if (mIsBeingDragged) {
-          // Scroll to follow the motion event
-          if (performDrag(x)) {
-              ViewCompat.postInvalidateOnAnimation(this);
-          }
-      }*/
+        // Scroll to follow the motion event
+        if (performDrag(x)) {
+          ViewCompat.postInvalidateOnAnimation(this);
+        }
+      }
       break;
     case MotionEvent.ACTION_DOWN:
       Log.d(TAG, "onInterceptTouchEvent ACTION_DOWN");
@@ -468,19 +504,21 @@ public class SheetLayout extends ViewGroup {
        */
       mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
       mLastMotionX = mInitialMotionX = ev.getX();
-      mLastMotionY = ev.getY();
+      mLastMotionY = mInitialMotionY = ev.getY();
       mIsUnableToDrag = false;
       boolean touchAllowed = thisTouchAllowed(ev);
       Log.d(TAG, "touchAllowed = "+touchAllowed);
       if (touchAllowed) {
+        mIsUnableToDrag = false;
         if (mScrollState == SCROLL_STATE_SETTLING) {
           // Let the user 'catch' the pager as it animates.
           mIsBeingDragged = true;
           setScrollState(SCROLL_STATE_DRAGGING);
         } else {
-          //completeScroll(false);
           mIsBeingDragged = false;
         }
+      } else {
+        mIsUnableToDrag = true;
       }
 
       if (DEBUG) Log.v(TAG, "Down at " + mLastMotionX + "," + mLastMotionY
@@ -518,31 +556,31 @@ public class SheetLayout extends ViewGroup {
     float eX = ev.getX();
     float left = ViewHelper.getX(topSheet);
     float right = left + topSheet.getMeasuredWidth();
-    Fragment f = info.sheetFragment;
-    if (left < eX && eX < right && f instanceof ISheetFragment) {
-      return !((ISheetFragment)f).shouldInterceptLayoutMotionEvent(ev);
+    if (left < eX && eX < right) {
+      return true;
     } else
-      return false; 
+      return false;
   }
   
   @Override
   public boolean onTouchEvent(MotionEvent ev) {
-    if (ev.getAction() == MotionEvent.ACTION_DOWN && ev.getEdgeFlags() != 0) {
-      // Don't handle edge touches immediately -- they may actually belong to one of our
-      // descendants.
+    /*
+     * Either onInterceptTouch event returned true, or all child views 
+     * in the hierarchy return false in their onTouchEvent methods.
+     */
+    
+    // Shortcut exit for various cases we should not be handing the touch event
+    // Don't handle if onIntercept determined we shouldn't (mIsUnableToDrag)
+    // Don't handle during animation
+    // Don't handle edge touches immediately -- they may actually belong to one of our
+    // descendants.
+    if (mIsUnableToDrag
+        || mIsAnimating 
+        || (mAdapter == null || mAdapter.getCount() == 0)
+        || (ev.getAction() == MotionEvent.ACTION_DOWN && ev.getEdgeFlags() != 0) ) {
       return false;
     }
 
-    if (mAdapter == null || mAdapter.getCount() == 0) {
-      // Nothing to present or scroll; nothing to touch.
-      return false;
-    }
-    
-    if (mIsAnimating) {
-      // Don't allow touch/drags during animation
-      return false;
-    }
-    
     if (mVelocityTracker == null) {
       mVelocityTracker = VelocityTracker.obtain();
     }
@@ -602,14 +640,14 @@ public class SheetLayout extends ViewGroup {
         mPopulatePending = true;
         mActivePointerId = INVALID_POINTER;
         endDrag();
-        needsInvalidate = mLeftEdge.onRelease() | mRightEdge.onRelease();
+        needsInvalidate = mRightEdge.onRelease();
       }
       break;
     case MotionEvent.ACTION_CANCEL:
       if (mIsBeingDragged) {
         mActivePointerId = INVALID_POINTER;
         endDrag();
-        needsInvalidate = mLeftEdge.onRelease() | mRightEdge.onRelease();
+        needsInvalidate = mRightEdge.onRelease();
       }
       break;
     case MotionEventCompat.ACTION_POINTER_DOWN:
@@ -657,7 +695,7 @@ public class SheetLayout extends ViewGroup {
     // only visible for leftBound / right edge
     if (newTopX < leftBound) {
       float over = leftBound - newTopX;
-      needsInvalidate = mLeftEdge.onPull(Math.abs(over) / width);
+      needsInvalidate = mRightEdge.onPull(Math.abs(over) / width);
       newTopX = leftBound;
     } else if (newTopX > rightBound) {
       newTopX = rightBound;
@@ -721,6 +759,36 @@ public class SheetLayout extends ViewGroup {
     }
   }
 
+  protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
+    if (v instanceof ViewGroup) {
+      final ViewGroup group = (ViewGroup) v;
+      final int scrollX = v.getScrollX();
+      final int scrollY = v.getScrollY();
+      final int count = group.getChildCount();
+      // Count backwards - let topmost views consume scroll distance first.
+      
+      final View child = group.getChildAt(count - 1);
+      if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
+          && y + scrollY < child.getBottom()
+          && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
+        return true;
+      }
+      // Only check the top child, no other children should get touch events
+//      for (int i = count - 1; i >= 0; i--) {
+//        // TODO: Add versioned support here for transformed views.
+//        // This will not work for transformed views in Honeycomb+
+//        final View child = group.getChildAt(i);
+//        if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
+//            && y + scrollY < child.getBottom()
+//            && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
+//          return true;
+//        }
+//      }
+    }
+
+    return checkV && ViewCompat.canScrollHorizontally(v, -dx);
+  }
+
   private void onSecondaryPointerUp(MotionEvent ev) {
     final int pointerIndex = MotionEventCompat.getActionIndex(ev);
     final int pointerId = MotionEventCompat.getPointerId(ev, pointerIndex);
@@ -776,6 +844,8 @@ public class SheetLayout extends ViewGroup {
    */
   @Override
   public void addFocusables(ArrayList<View> views, int direction, int focusableMode) {
+    Log.d(TAG, "### addFocusables ###");
+    
     final int focusableCount = views.size();
 
     final int descendantFocusability = getDescendantFocusability();
@@ -1479,7 +1549,6 @@ public class SheetLayout extends ViewGroup {
 
   private class LayoutParams extends ViewGroup.LayoutParams {
 
-
     /**
      * Width as a 0-1 multiplier of the measured pager width
      */
@@ -1506,7 +1575,6 @@ public class SheetLayout extends ViewGroup {
      * 
      */
     public boolean shouldPop = false;
-    
     
     public boolean isDecor = false;
 
