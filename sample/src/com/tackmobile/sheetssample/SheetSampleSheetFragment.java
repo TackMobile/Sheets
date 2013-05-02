@@ -1,20 +1,18 @@
 package com.tackmobile.sheetssample;
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.app.ListFragment;
 import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,18 +20,16 @@ import com.tackmobile.sheets.ISheetFragment;
 import com.tackmobile.sheets.ISheetListener;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter.SheetDescriptor;
 
-public class SheetSampleSheetFragment extends Fragment implements ISheetFragment {
-
-  public static final String KEY_COLOR = "keyColor";
+public class SheetSampleSheetFragment extends ListFragment implements ISheetFragment {
   
   private static final String TAG = "SheetFragment";
-  
-  private String[] data = { "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple",
-      "list", "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple", "list" };
-  
-  private ISheetListener mListener;
 
-  private ListView mList;
+  public static final String KEY_COLOR = "keyColor";
+
+  String[] data = { "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple", "list",
+      "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple", "list" };
+
+  private ISheetListener mListener;
 
   private MyAdapter mAdapter;
   
@@ -59,28 +55,25 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
     view.findViewById(R.id.btn_add_sheet).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        //Intent addIntent = new Intent(SheetSampleMainActivity.ACTION_ADD_SHEET);
-        //addIntent.putExtra(SheetSampleMainActivity.EXTRA_SHEET_CLASS_NAME, SheetSampleSheetFragment.class.getCanonicalName());
-        //addIntent.putExtra(SheetSampleMainActivity.EXTRA_ARGS, getRandomColorArgs());
-        //LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(addIntent);
         SheetDescriptor d = new SheetDescriptor(SheetSampleSheetFragment.class, getRandomColorArgs());
-        mListener.addSheetFragment(d);
+        if (mListener != null)
+          mListener.addSheetFragment(d);
       }
     });
 
     view.findViewById(R.id.btn_pop_sheet).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent popIntent = new Intent(SheetSampleMainActivity.ACTION_POP_SHEET);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(popIntent);
+        if (mListener != null)
+          mListener.popTopSheetFragment();
       }
     });
     
     view.findViewById(R.id.btn_pop_all_sheets).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent popAllIntent = new Intent(SheetSampleMainActivity.ACTION_POP_ALL_SHEETS);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(popAllIntent);
+        if (mListener != null)
+          mListener.popAllSheets();
       }
     });
 
@@ -88,22 +81,19 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
     TextView textViewIndex = (TextView) view.findViewById(R.id.text_view_index);
     textViewIndex.setText("View Index : "+viewIndex);
     
-    mList = (ListView) view.findViewById(android.R.id.list);
     setListAdapter();
   }
   
   public void setListAdapter() {
-    mAdapter = new MyAdapter(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, new String[]{"first","set"});
     //mAdapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, data);
-    mList.setAdapter(mAdapter);
-    mList.setOnItemClickListener(new OnItemClickListener() {
+    mAdapter = new MyAdapter(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, new String[]{"first","set"});
+    setListAdapter(mAdapter);
+    getListView().setOnItemClickListener(new OnItemClickListener() {
       @Override
       public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
         Toast.makeText(getActivity(), "List Item Clicked!", Toast.LENGTH_LONG).show();
       }
     });
-    Toast.makeText(getActivity(), "List Adapter Set", Toast.LENGTH_SHORT).show();
-    mList.setBackgroundColor(Color.GREEN);
   }
   
   @Override
@@ -112,16 +102,19 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
 
     Handler h = new Handler(getActivity().getMainLooper());
     h.postDelayed(new Runnable() {
-    //h.post(new Runnable() {
       @Override
       public void run() {
-        mAdapter.update(data);
-        Toast.makeText(getActivity(), "List Adapter Updated", Toast.LENGTH_SHORT).show();
+        updateData();
       }
     }, 3 * DateUtils.SECOND_IN_MILLIS);
   }
   
-  private class MyAdapter extends ArrayAdapter<String> {
+  void updateData() {
+    mAdapter.update(data);
+    ((SheetSampleListView)getListView()).forceLayoutChildren();
+  }
+  
+  class MyAdapter extends ArrayAdapter<String> {
     String[] mData;
     public MyAdapter(Context context, int layout, int res, String[] data) {
       super(context, layout, res, data);
@@ -135,11 +128,19 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
     
     @Override
     public int getCount() {
+      Log.d(TAG, "MyAdapter.getCount\t count:"+(mData != null ? mData.length : 0));
       return mData != null ? mData.length : 0;
     }
     
     public String getItem(int position) {
+      Log.d(TAG, "MyAdapter.getItem\t position:"+position);
       return mData != null && mData.length > position ? mData[position] : "";
+    }
+    
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+      Log.d(TAG, "MyAdapter.getView\t position:"+position);
+      return super.getView(position, convertView, parent);
     }
   }
 
