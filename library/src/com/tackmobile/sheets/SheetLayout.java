@@ -4,18 +4,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
+import android.animation.Animator;
+import android.app.Fragment;
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v4.app.Fragment;
-import android.support.v4.os.ParcelableCompat;
-import android.support.v4.os.ParcelableCompatCreatorCallbacks;
-import android.support.v4.view.MotionEventCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewConfigurationCompat;
-import android.support.v4.widget.EdgeEffectCompat;
+import android.support.v4.view.ViewCompatJB;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -26,12 +22,10 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.animation.Interpolator;
+import android.widget.EdgeEffect;
+import android.widget.FrameLayout;
 
-import com.nineoldandroids.animation.Animator;
-import com.nineoldandroids.view.ViewHelper;
-import com.nineoldandroids.view.ViewPropertyAnimator;
-
-public class SheetLayout extends ViewGroup {
+public class SheetLayout extends FrameLayout {
 
   //
   // Static vars
@@ -139,7 +133,7 @@ public class SheetLayout extends ViewGroup {
   private VelocityTracker mVelocityTracker;
   private int mMaximumVelocity;
   
-  private EdgeEffectCompat mRightEdge;
+  private EdgeEffect mRightEdge;
 
   private boolean mFirstLayout = true;
 
@@ -172,7 +166,8 @@ public class SheetLayout extends ViewGroup {
           continue;
         
         if (lp.shouldPop) {
-          ViewPropertyAnimator.animate(child)
+          //ViewPropertyAnimator.animate(child)
+          child.animate()
             .setInterpolator(sInterpolator)
             .setDuration(POP_DURATION)
             .setListener(mPopAnimationListener)
@@ -192,9 +187,10 @@ public class SheetLayout extends ViewGroup {
           newX = clientWidth - child.getMeasuredWidth();
         }
 
-        float currX = ViewHelper.getX(child);
+        float currX = child.getX();// ViewHelper.getX(child);
         if (currX != newX) {
-          ViewPropertyAnimator.animate(child)
+          //ViewPropertyAnimator.animate(child)
+          child.animate()
               .setInterpolator(sInterpolator)
               .setDuration(DEFAULT_ANIM_DURATION)
               .x(newX);
@@ -266,17 +262,20 @@ public class SheetLayout extends ViewGroup {
   }
 
   private void init(final Context context) {
-    setWillNotDraw(false);
+//    setWillNotDraw(false);
+//    setWillNotCacheDrawing(true);
     //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     //setFocusable(true);
 
     final ViewConfiguration configuration = ViewConfiguration.get(context);
     //final float density = context.getResources().getDisplayMetrics().density;
 
-    mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(configuration);
+    
+    //ViewConfiguration.get().getScaledTouchSlop(configuration);
+    mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop(); 
     //mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
-    mRightEdge = new EdgeEffectCompat(context);
+    mRightEdge = new EdgeEffect(context);
 
     //mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
     
@@ -291,20 +290,20 @@ public class SheetLayout extends ViewGroup {
     
   }
 
-  private void setScrollingCacheEnabled(boolean enabled) {
-      if (mScrollingCacheEnabled != enabled) {
-          mScrollingCacheEnabled = enabled;
-          if (USE_CACHE) {
-              final int size = getChildCount();
-              for (int i = 0; i < size; ++i) {
-                  final View child = getChildAt(i);
-                  if (child.getVisibility() != GONE) {
-                      child.setDrawingCacheEnabled(enabled);
-                  }
-              }
-          }
-      }
-  }
+//  private void setScrollingCacheEnabled(boolean enabled) {
+//      if (mScrollingCacheEnabled != enabled) {
+//          mScrollingCacheEnabled = enabled;
+//          if (USE_CACHE) {
+//              final int size = getChildCount();
+//              for (int i = 0; i < size; ++i) {
+//                  final View child = getChildAt(i);
+//                  if (child.getVisibility() != GONE) {
+//                      child.setDrawingCacheEnabled(enabled);
+//                  }
+//              }
+//          }
+//      }
+//  }
   
   public int getOffscreenPageLimit() {
     return mOffscreenPageLimit;
@@ -420,7 +419,7 @@ public class SheetLayout extends ViewGroup {
     
     if (getChildCount() == 0) return false;
     
-    final int action = ev.getAction() & MotionEventCompat.ACTION_MASK;
+    final int action = ev.getAction() & MotionEvent.ACTION_MASK;
     if (action == MotionEvent.ACTION_CANCEL || 
         action == MotionEvent.ACTION_UP || 
         (action != MotionEvent.ACTION_DOWN && mIsUnableToDrag)) {
@@ -456,11 +455,11 @@ public class SheetLayout extends ViewGroup {
           // If we don't have a valid id, the touch down wasn't on content.
           break;
       }
-      final int pointerIndex = MotionEventCompat.findPointerIndex(ev, activePointerId);
-      final float x = MotionEventCompat.getX(ev, pointerIndex);
+      final int pointerIndex = ev.findPointerIndex(activePointerId);// MotionEvent.findPointerIndex(ev, activePointerId);
+      final float x = ev.getX(pointerIndex); //MotionEvent.getX(ev, pointerIndex);
       final float dx = x - mLastMotionX;
       final float xDiff = Math.abs(dx);
-      final float y = MotionEventCompat.getY(ev, pointerIndex);
+      final float y = ev.getY(pointerIndex); // MotionEvent.getY(ev, pointerIndex);
       final float yDiff = Math.abs(y - mInitialMotionY);
       //if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
 
@@ -479,7 +478,7 @@ public class SheetLayout extends ViewGroup {
         mLastMotionY = y;
         mIsBeingDragged = true;
         setScrollState(SCROLL_STATE_DRAGGING);
-        setScrollingCacheEnabled(true);
+        //setScrollingCacheEnabled(true);
       } else if (yDiff > mTouchSlop) {
         // The finger has moved enough in the vertical
         // direction to be counted as a drag... abort
@@ -492,7 +491,7 @@ public class SheetLayout extends ViewGroup {
       if (mIsBeingDragged) {
         // Scroll to follow the motion event
         if (performDrag(x)) {
-          ViewCompat.postInvalidateOnAnimation(this);
+          ViewCompatJB.postInvalidateOnAnimation(this);
         }
       }
       break;
@@ -502,7 +501,7 @@ public class SheetLayout extends ViewGroup {
        * Remember location of down touch.
        * According to Google source code, ACTION_DOWN always refers to pointer index 0.
        */
-      mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
+      mActivePointerId = ev.getPointerId(0);// MotionEvent.getPointerId(ev, 0);
       mLastMotionX = mInitialMotionX = ev.getX();
       mLastMotionY = mInitialMotionY = ev.getY();
       mIsUnableToDrag = false;
@@ -525,7 +524,7 @@ public class SheetLayout extends ViewGroup {
               + " mIsBeingDragged=" + mIsBeingDragged
               + " mIsUnableToDrag=" + mIsUnableToDrag);
       break;
-    case MotionEventCompat.ACTION_POINTER_UP:
+    case MotionEvent.ACTION_POINTER_UP:
       Log.d(TAG, "onInterceptTouchEvent ACTION_POINTER_UP");
       //onSecondaryPointerUp(ev);
       break;
@@ -554,7 +553,7 @@ public class SheetLayout extends ViewGroup {
     if (info == null || info.sheetFragment == null) return false;   // Can't touch a sheet that doesn't exist yet
     
     float eX = ev.getX();
-    float left = ViewHelper.getX(topSheet);
+    float left = topSheet.getX(); //ViewHelper.getX(topSheet);
     float right = left + topSheet.getMeasuredWidth();
     if (left < eX && eX < right) {
       return true;
@@ -589,7 +588,7 @@ public class SheetLayout extends ViewGroup {
     final int action = ev.getAction();
     boolean needsInvalidate = false;
     
-    switch (action & MotionEventCompat.ACTION_MASK) {
+    switch (action & MotionEvent.ACTION_MASK) {
     case MotionEvent.ACTION_DOWN:
       Log.d(TAG, "onTouchEvent ACTION_DOWN");
       //if (thisTouchAllowed(ev)) {
@@ -601,16 +600,16 @@ public class SheetLayout extends ViewGroup {
         // Remember where the motion event started
         mLastMotionX = mInitialMotionX = ev.getX();
         mLastMotionY = ev.getY();
-        mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
+        mActivePointerId = ev.getPointerId(0); // MotionEvent.getPointerId(ev, 0);
       //}
       break;
     case MotionEvent.ACTION_MOVE:
       Log.d(TAG, "onTouchEvent ACTION_MOVE");
       if (!mIsBeingDragged) {
-        final int pointerIndex = MotionEventCompat.findPointerIndex(ev, mActivePointerId);
-        final float x = MotionEventCompat.getX(ev, pointerIndex);
+        final int pointerIndex = ev.findPointerIndex(mActivePointerId);// MotionEvent.findPointerIndex(ev, mActivePointerId);
+        final float x = ev.getX(pointerIndex); //MotionEvent.getX(ev, pointerIndex);
         final float xDiff = Math.abs(x - mLastMotionX);
-        final float y = MotionEventCompat.getY(ev, pointerIndex);
+        final float y = ev.getY(pointerIndex); // MotionEvent.getY(ev, pointerIndex);
         final float yDiff = Math.abs(y - mLastMotionY);
         
         //if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
@@ -620,15 +619,15 @@ public class SheetLayout extends ViewGroup {
           mLastMotionX = x > mInitialMotionX ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
           mLastMotionY = y;
           setScrollState(SCROLL_STATE_DRAGGING);
-          setScrollingCacheEnabled(true);
+          //setScrollingCacheEnabled(true);
         }
       }
       
       // Not else! Note that mIsBeingDragged can be set above.
       if (mIsBeingDragged) {
         // Scroll to follow the motion event
-        final int activePointerIndex = MotionEventCompat.findPointerIndex(ev, mActivePointerId);
-        final float x = MotionEventCompat.getX(ev, activePointerIndex);
+        final int activePointerIndex = ev.findPointerIndex(mActivePointerId); // MotionEvent.findPointerIndex(ev, mActivePointerId);
+        final float x = ev.getX(activePointerIndex); // MotionEvent.getX(ev, activePointerIndex);
         needsInvalidate |= performDrag(x);
       }
       break;
@@ -640,32 +639,32 @@ public class SheetLayout extends ViewGroup {
         mPopulatePending = true;
         mActivePointerId = INVALID_POINTER;
         endDrag();
-        needsInvalidate = mRightEdge.onRelease();
+        needsInvalidate = true; mRightEdge.onRelease();
       }
       break;
     case MotionEvent.ACTION_CANCEL:
       if (mIsBeingDragged) {
         mActivePointerId = INVALID_POINTER;
         endDrag();
-        needsInvalidate = mRightEdge.onRelease();
+        needsInvalidate = true; mRightEdge.onRelease();
       }
       break;
-    case MotionEventCompat.ACTION_POINTER_DOWN:
+    case MotionEvent.ACTION_POINTER_DOWN:
       Log.d(TAG, "onTouchEvent ACTION_POINTER_DOWN");
-      final int index = MotionEventCompat.getActionIndex(ev);
-      final float x = MotionEventCompat.getX(ev, index);
+      final int index = ev.getActionIndex(); // MotionEvent.getActionIndex(ev);
+      final float x = ev.getX(index); //MotionEvent.getX(ev, index);
       mLastMotionX = x;
-      mActivePointerId = MotionEventCompat.getPointerId(ev, index);
+      mActivePointerId = ev.getPointerId(index); // MotionEvent.getPointerId(ev, index);
       break;
-    case MotionEventCompat.ACTION_POINTER_UP:
+    case MotionEvent.ACTION_POINTER_UP:
       Log.d(TAG, "onTouchEvent ACTION_POINTER_UP");
       onSecondaryPointerUp(ev);
-      mLastMotionX = MotionEventCompat.getX(ev, MotionEventCompat.findPointerIndex(ev, mActivePointerId));
+      mLastMotionX = ev.getX(ev.findPointerIndex(mActivePointerId)); // MotionEvent.getX(ev, ev.findPointerIndex(mActivePointerId)); // MotionEvent.findPointerIndex(ev, mActivePointerId));
       break;
     }
     
     if (needsInvalidate) {
-      ViewCompat.postInvalidateOnAnimation(this);
+      ViewCompatJB.postInvalidateOnAnimation(this);
     }
 
     return true;
@@ -683,7 +682,7 @@ public class SheetLayout extends ViewGroup {
     final float deltaX = mLastMotionX - x;
     mLastMotionX = x;
 
-    float oldTopX = ViewHelper.getX(topChild);
+    float oldTopX = topChild.getX(); //ViewHelper.getX(topChild);
     float newTopX = oldTopX - deltaX;
     final int width = getClientWidth();
     
@@ -695,7 +694,7 @@ public class SheetLayout extends ViewGroup {
     // only visible for leftBound / right edge
     if (newTopX < leftBound) {
       float over = leftBound - newTopX;
-      needsInvalidate = mRightEdge.onPull(Math.abs(over) / width);
+      needsInvalidate = true; mRightEdge.onPull(Math.abs(over) / width);
       newTopX = leftBound;
     } else if (newTopX > rightBound) {
       newTopX = rightBound;
@@ -707,25 +706,25 @@ public class SheetLayout extends ViewGroup {
     //Log.v(TAG, "performDrag() x:"+x+"\t mLastMotionX:"+mLastMotionX+"\t newTopX:"+newTopX);
     
     // Translate relevant views to new X values
-    ViewHelper.setX(topChild, newTopX);
+    topChild.setX(newTopX); //ViewHelper.setX(topChild, newTopX);
     int next = getChildCount() - 2;
     View prevChild = topChild;
     View nextChild;
-    float prevLeft = ViewHelper.getX(prevChild);
+    float prevLeft = prevChild.getX(); // ViewHelper.getX(prevChild);
     float nextRight;
     float nextLeft;
     int nextWidth;
     while (next >= 0) {
       nextChild = getChildAt(next);
       nextWidth = nextChild.getMeasuredWidth();
-      nextLeft = ViewHelper.getX(nextChild);
+      nextLeft = nextChild.getX(); //ViewHelper.getX(nextChild);
       nextRight = nextLeft + nextWidth;
       if (prevLeft > nextRight) {
         nextLeft = prevLeft - nextWidth;
-        ViewHelper.setX(nextChild, nextLeft);
+        nextChild.setX(nextLeft); //ViewHelper.setX(nextChild, nextLeft);
       } else if (nextLeft > prevLeft - nextWidth) {
         nextLeft = Math.max(0, prevLeft - nextWidth);
-        ViewHelper.setX(nextChild, nextLeft);
+        nextChild.setX(nextLeft); //ViewHelper.setX(nextChild, nextLeft);
       } else {
         break;
       }
@@ -749,13 +748,13 @@ public class SheetLayout extends ViewGroup {
     // Check current item
     final int topPosition = getChildCount() - 1;
     final View topSheet = getChildAt(topPosition);
-    final float topX = ViewHelper.getX(topSheet);
+    final float topX = topSheet.getX(); // ViewHelper.getX(topSheet);
     final int clientWidth = getClientWidth();
     final int halfSheetWidth = topSheet.getMeasuredWidth() / 2;
     if (topX + halfSheetWidth > clientWidth && mAdapter != null) {
       mAdapter.popSheetFragment(topPosition);
     } else {
-      ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
+      ViewCompatJB.postOnAnimation(this, mUpdateSheetsRunnable);
     }
   }
 
@@ -786,18 +785,18 @@ public class SheetLayout extends ViewGroup {
 //      }
     }
 
-    return checkV && ViewCompat.canScrollHorizontally(v, -dx);
+    return checkV && v.canScrollHorizontally(-dx);// View.canScrollHorizontally(v, -dx);
   }
 
   private void onSecondaryPointerUp(MotionEvent ev) {
-    final int pointerIndex = MotionEventCompat.getActionIndex(ev);
-    final int pointerId = MotionEventCompat.getPointerId(ev, pointerIndex);
+    final int pointerIndex = ev.getActionIndex();// MotionEvent.getActionIndex(ev);
+    final int pointerId = ev.getPointerId(pointerIndex); // MotionEvent.getPointerId(ev, pointerIndex);
     if (pointerId == mActivePointerId) {
       // This was our active pointer going up. Choose a new
       // active pointer and adjust accordingly.
       final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
-      mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex);
-      mActivePointerId = MotionEventCompat.getPointerId(ev, newPointerIndex);
+      mLastMotionX = ev.getX(newPointerIndex); // MotionEvent.getX(ev, newPointerIndex);
+      mActivePointerId = ev.getPointerId(newPointerIndex); //MotionEvent.getPointerId(ev, newPointerIndex);
       if (mVelocityTracker != null) {
         mVelocityTracker.clear();
       }
@@ -1187,7 +1186,7 @@ public class SheetLayout extends ViewGroup {
   }
   
   @Override
-  public ViewGroup.LayoutParams generateLayoutParams(AttributeSet attrs) {
+  public FrameLayout.LayoutParams generateLayoutParams(AttributeSet attrs) {
     return new LayoutParams(getContext(), attrs);
   }
 
@@ -1286,7 +1285,7 @@ public class SheetLayout extends ViewGroup {
           } else if (i == count - 1) {
             childLeft = clientWidth;
           } else {
-            float currX = ViewHelper.getX(child);
+            float currX = child.getX(); // ViewHelper.getX(child);
             if (0 <= currX && currX < clientWidth)
               childLeft = (int) currX;
             else
@@ -1306,7 +1305,7 @@ public class SheetLayout extends ViewGroup {
       }
     }
     
-    ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
+    ViewCompatJB.postOnAnimation(this, mUpdateSheetsRunnable);
 
     mFirstLayout = false;
   }
@@ -1316,9 +1315,9 @@ public class SheetLayout extends ViewGroup {
     super.draw(canvas);
     boolean needsInvalidate = false;
 
-    final int overScrollMode = ViewCompat.getOverScrollMode(this);
-    if (overScrollMode == ViewCompat.OVER_SCROLL_ALWAYS
-        || (overScrollMode == ViewCompat.OVER_SCROLL_IF_CONTENT_SCROLLS && mAdapter != null && mAdapter.getCount() > 1)) {
+    final int overScrollMode = getOverScrollMode();
+    if (overScrollMode == OVER_SCROLL_ALWAYS
+        || (overScrollMode == OVER_SCROLL_IF_CONTENT_SCROLLS && mAdapter != null && mAdapter.getCount() > 1)) {
       if (!mRightEdge.isFinished()) {
         final int restoreCount = canvas.save();
         final int width = getWidth();
@@ -1336,7 +1335,7 @@ public class SheetLayout extends ViewGroup {
 
     if (needsInvalidate) {
       // Keep animating
-      ViewCompat.postInvalidateOnAnimation(this);
+      ViewCompatJB.postInvalidateOnAnimation(this);
     }
   }
 
@@ -1402,6 +1401,10 @@ public class SheetLayout extends ViewGroup {
       super(superState);
     }
 
+    public SavedState(Parcel superState) {
+      super(superState);
+    }
+    
     @Override
     public void writeToParcel(Parcel out, int flags) {
       super.writeToParcel(out, flags);
@@ -1414,18 +1417,17 @@ public class SheetLayout extends ViewGroup {
       return "FragmentPager.SavedState{"+Integer.toHexString(System.identityHashCode(this))+"}";
     }
 
-    public static final Parcelable.Creator<SavedState> CREATOR = ParcelableCompat
-        .newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
-          @Override
-          public SavedState createFromParcel(Parcel in, ClassLoader loader) {
-            return new SavedState(in, loader);
-          }
-
+    public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
           @Override
           public SavedState[] newArray(int size) {
             return new SavedState[size];
           }
-        });
+
+          @Override
+          public SavedState createFromParcel(Parcel source) {
+            return new SavedState(source);
+          }
+    };
 
     SavedState(Parcel in, ClassLoader loader) {
       super(in);
@@ -1547,7 +1549,7 @@ public class SheetLayout extends ViewGroup {
     }
   }
 
-  private class LayoutParams extends ViewGroup.LayoutParams {
+  private class LayoutParams extends FrameLayout.LayoutParams {
 
     /**
      * Width as a 0-1 multiplier of the measured pager width

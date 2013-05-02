@@ -1,11 +1,13 @@
 package com.tackmobile.sheetssample;
 
-import android.content.Context;
+import java.util.ArrayList;
+
+import android.app.Activity;
+import android.app.Fragment;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
@@ -26,16 +28,30 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
 
   public static final String KEY_COLOR = "keyColor";
   
-  private static final String TAG = "SheetFragment";
+  //private static final String TAG = "SheetFragment";
   
   private String[] data = { "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple",
       "list", "just", "a", "simple", "list", "just", "a", "simple", "list", "just", "a", "simple", "list" };
+  
+  private ArrayList<String> mData = new ArrayList<String>();
   
   private ISheetListener mListener;
 
   private ListView mList;
 
-  private MyAdapter mAdapter;
+  private ArrayAdapter<String> mAdapter;
+
+  private Handler mHandler;
+
+  private Runnable updateRunnable = new Runnable() {
+    //h.post(new Runnable() {
+    @Override
+    public void run() {
+      updateData();
+    }
+  };
+
+  private boolean mAdapterIsSet;
   
   @Override
   public void setSheetListener(ISheetListener listener) {
@@ -81,68 +97,114 @@ public class SheetSampleSheetFragment extends Fragment implements ISheetFragment
       public void onClick(View v) {
         Intent popAllIntent = new Intent(SheetSampleMainActivity.ACTION_POP_ALL_SHEETS);
         LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(popAllIntent);
+        updateData();
       }
     });
 
     int viewIndex = args.getInt(SheetSampleMainActivity.KEY_VIEW_INDEX);
     TextView textViewIndex = (TextView) view.findViewById(R.id.text_view_index);
     textViewIndex.setText("View Index : "+viewIndex);
+
+    mData.add("first");
+    mData.add("set");
     
+    mHandler = new Handler(getActivity().getMainLooper());
     mList = (ListView) view.findViewById(android.R.id.list);
-    setListAdapter();
-  }
-  
-  public void setListAdapter() {
-    mAdapter = new MyAdapter(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, new String[]{"first","set"});
-    //mAdapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, data);
-    mList.setAdapter(mAdapter);
+    mList.setScrollingCacheEnabled(false);
     mList.setOnItemClickListener(new OnItemClickListener() {
       @Override
       public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
         Toast.makeText(getActivity(), "List Item Clicked!", Toast.LENGTH_LONG).show();
       }
     });
-    Toast.makeText(getActivity(), "List Adapter Set", Toast.LENGTH_SHORT).show();
-    mList.setBackgroundColor(Color.GREEN);
+    
+    //setListAdapter(mData);
   }
   
   @Override
   public void onActivityCreated(Bundle savedInstanceState) {
     super.onActivityCreated(savedInstanceState);
-
-    Handler h = new Handler(getActivity().getMainLooper());
-    h.postDelayed(new Runnable() {
-    //h.post(new Runnable() {
-      @Override
-      public void run() {
-        mAdapter.update(data);
-        Toast.makeText(getActivity(), "List Adapter Updated", Toast.LENGTH_SHORT).show();
-      }
-    }, 3 * DateUtils.SECOND_IN_MILLIS);
+    setListAdapter(mData);
+    mHandler.postDelayed(updateRunnable, 3 * DateUtils.SECOND_IN_MILLIS);
   }
   
-  private class MyAdapter extends ArrayAdapter<String> {
-    String[] mData;
-    public MyAdapter(Context context, int layout, int res, String[] data) {
-      super(context, layout, res, data);
-      mData = data;
+  @Override
+  public void onAttach(Activity activity) {
+    super.onAttach(activity);
+  }
+  
+  @Override
+  public void onResume() {
+    super.onResume();
+  }
+  
+  @Override
+  public void onPause() {
+    super.onPause();
+    mHandler.removeCallbacks(updateRunnable);
+  }
+  
+  public void setListAdapter(ArrayList<String> data) {
+    //mAdapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, data);
+    mAdapter = new ArrayAdapter<String>(
+        getActivity(), 
+        android.R.layout.simple_list_item_1, 
+        android.R.id.text1, 
+        data);
+    mList.setAdapter(mAdapter);
+    mAdapterIsSet = true;
+    Toast.makeText(getActivity(), "List Adapter Set", Toast.LENGTH_SHORT).show();
+  }
+  
+  public void updateData() {
+    mData.clear();
+    for (String s : data) {
+      mData.add(s);
     }
     
-    public void update(String[] data) {
-      mData = data;
-      notifyDataSetChanged();
+    if (!mAdapterIsSet) {
+      setListAdapter(mData);
+    } else {
+      mAdapter.notifyDataSetChanged();
     }
+    mList.setBackgroundColor(Color.WHITE);
     
-    @Override
-    public int getCount() {
-      return mData != null ? mData.length : 0;
-    }
+//    mList.destroyDrawingCache();
+//    mList.invalidateViews();
+//
+//    MotionEvent e = MotionEvent.obtain(System.currentTimeMillis(),
+//                                       System.currentTimeMillis(),
+//                                        MotionEvent.ACTION_DOWN, 
+//                                        10, 10, 0);
+//    mList.dispatchTouchEvent(e);
+//    e.recycle();
+//    
+//    mList.setVisibility(View.INVISIBLE);
+//    mList.setVisibility(View.VISIBLE);
+//    mList.refreshDrawableState();
+//    mList.requestLayout();
     
-    public String getItem(int position) {
-      return mData != null && mData.length > position ? mData[position] : "";
+//    final ViewGroup parent = (ViewGroup) mList.getParent();
+//    final ViewGroup.LayoutParams lp = mList.getLayoutParams();
+//    parent.removeView(mList);
+//    mList.setAdapter(null);
+//    
+//    getActivity().runOnUiThread(new Runnable() {
+//      
+//      @Override
+//      public void run() {
+//        //mList = new ListView(getActivity());
+//        mList.setAdapter(mAdapter);
+//        parent.addView(mList, lp);
+//      }
+//    });
+    
+    //Toast.makeText(getActivity(), "List Adapter Updated", Toast.LENGTH_SHORT).show();
+    
+    if (mListener != null) {
+      mListener.notifySheetDataChanged();
     }
   }
-
 
   public static Bundle getRandomColorArgs() {
     Bundle args = new Bundle();

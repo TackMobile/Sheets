@@ -2,12 +2,12 @@ package com.tackmobile.sheets;
 
 import java.util.ArrayList;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
 import android.view.ViewGroup;
 
 public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements ISheetListener {
@@ -64,6 +64,11 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements 
   public void popAllSheets() {
     mDescriptors.clear();
     removeAllFragments();
+  }
+  
+  @Override
+  public void notifySheetDataChanged() {
+    notifyDataSetChanged();
   }
   
   @Override

@@ -10,4 +10,6 @@ public interface ISheetListener {
   
   void popAllSheets();
   
+  void notifySheetDataChanged();
+  
 }

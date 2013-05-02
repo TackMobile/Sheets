@@ -1,13 +1,13 @@
 package com.tackmobile.sheetssample;
 
+import android.app.Activity;
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -16,7 +16,7 @@ import android.view.View;
 import com.tackmobile.sheets.SheetLayout;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter;
 
-public class SheetSampleMainActivity extends FragmentActivity {
+public class SheetSampleMainActivity extends Activity {
 
   private static final String TAG = "MainActivity";
 
@@ -35,14 +35,14 @@ public class SheetSampleMainActivity extends FragmentActivity {
   private SheetLayout mSheetLayout;
 
   private SampleSheetAdapter mAdapter;
-
+  
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
 
     mSheetLayout = (SheetLayout) findViewById(R.id.sheet_layout);
-    mAdapter = new SampleSheetAdapter(this, getSupportFragmentManager());
+    mAdapter = new SampleSheetAdapter(this, getFragmentManager());
     mSheetLayout.setAdapter(mAdapter);
   }
 

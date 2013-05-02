@@ -2,13 +2,13 @@ package com.tackmobile.sheets;
 
 import java.util.ArrayList;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.database.DataSetObservable;
 import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.ViewGroup;
 
@@ -142,7 +142,7 @@ public abstract class FragmentSheetAdapter {
       mFragments.add(null);
     }
     fragment.setMenuVisibility(false);
-    fragment.setUserVisibleHint(false);
+    //fragment.setUserVisibleHint(false);
     mFragments.set(position, fragment);
     mCurTransaction.add(container.getId(), fragment);
 
