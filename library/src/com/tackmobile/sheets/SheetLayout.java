@@ -213,6 +213,14 @@ public class SheetLayout extends ViewGroup {
     }
   };
 
+  private View.OnClickListener mShadowClickListener = new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+      if (mAdapter != null) {
+        mAdapter.popSheetFragment(getCurrentItemPosition());
+      }
+    }
+  };
   
   public SheetLayout(Context context, AttributeSet attrs) {
     super(context, attrs);
@@ -1308,11 +1316,14 @@ public class SheetLayout extends ViewGroup {
     shadowView.setBackgroundColor(Color.BLACK);
     shadowView.setDrawingCacheEnabled(true);
     shadowView.setDrawingCacheBackgroundColor(Color.BLACK);
-    shadowView.setClickable(true);
-    shadowView.setFocusable(false);
     ViewHelper.setAlpha(shadowView, 0f);
+    shadowView.setFocusable(false);
+    shadowView.setClickable(true);
+    shadowView.setOnClickListener(mShadowClickListener);
     return shadowView;
   }
+  
+  
   
   @Override
   protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
