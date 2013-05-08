@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<declare-styleable name="SheetLayout">
+		<attr name="shadowsEnabled" format="boolean" />
+	</declare-styleable>
+</resources>

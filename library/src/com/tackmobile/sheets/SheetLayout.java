@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -215,15 +216,15 @@ public class SheetLayout extends ViewGroup {
   
   public SheetLayout(Context context, AttributeSet attrs) {
     super(context, attrs);
-    init(context);
+    init(context, attrs);
   }
 
   public SheetLayout(Context context) {
     super(context);
-    init(context);
+    init(context, null);
   }
 
-  private void init(final Context context) {
+  private void init(final Context context, AttributeSet attrs) {
     setWillNotDraw(false);
     //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     setFocusable(false);
@@ -247,6 +248,13 @@ public class SheetLayout extends ViewGroup {
     //ViewCompat.setImportantForAccessibility(this,
     //        ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_YES);
     
+    
+    // process attrs
+    if (attrs != null) {
+      TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.SheetLayout);
+      mShadowEnabled = a.getBoolean(R.styleable.SheetLayout_shadowsEnabled, false);
+      a.recycle();
+    }
   }
 
 //  private void setScrollingCacheEnabled(boolean enabled) {
@@ -341,14 +349,12 @@ public class SheetLayout extends ViewGroup {
   public FragmentSheetAdapter getAdapter() {
     return mAdapter;
   }
-  
-  public void setShadowEnabled(boolean enabled) {
-    if (mShadowEnabled != enabled) {
-      mShadowEnabled = enabled;
-      requestLayout();
-    }
-  }
-  
+
+  /**
+   * To enable shadows you must set the SheetLayout shadowsEnabled resource value to true.
+   * 
+   * @return
+   */
   public boolean getShadowEnabled() {
     return mShadowEnabled;
   }
