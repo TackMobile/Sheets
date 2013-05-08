@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ListFragment;
 import android.text.format.DateUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +21,7 @@ import com.tackmobile.sheets.SimpleSheetFragmentAdapter.SheetDescriptor;
 
 public class SheetSampleSheetFragment extends ListFragment implements ISheetFragment {
   
-  private static final String TAG = "SheetFragment";
+  //private static final String TAG = "SheetFragment";
 
   public static final String KEY_COLOR = "keyColor";
 
@@ -90,7 +89,7 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     setListAdapter(mAdapter);
     getListView().setOnItemClickListener(new OnItemClickListener() {
       @Override
-      public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
+      public void onItemClick(AdapterView<?> listview, View view, int position, long id) {
         Toast.makeText(getActivity(), "List Item Clicked!", Toast.LENGTH_LONG).show();
       }
     });
@@ -111,7 +110,11 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
   
   void updateData() {
     mAdapter.update(data);
-    ((SheetSampleListView)getListView()).forceLayoutChildren();
+    
+    if (isResumed()) {
+      SheetSampleListView listView = (SheetSampleListView) getListView();
+      listView.forceLayoutChildren();
+    }
   }
   
   class MyAdapter extends ArrayAdapter<String> {
@@ -128,18 +131,18 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     
     @Override
     public int getCount() {
-      Log.d(TAG, "MyAdapter.getCount\t count:"+(mData != null ? mData.length : 0));
+      //Log.d(TAG, "MyAdapter.getCount\t count:"+(mData != null ? mData.length : 0));
       return mData != null ? mData.length : 0;
     }
     
     public String getItem(int position) {
-      Log.d(TAG, "MyAdapter.getItem\t position:"+position);
+      //Log.d(TAG, "MyAdapter.getItem\t position:"+position);
       return mData != null && mData.length > position ? mData[position] : "";
     }
     
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-      Log.d(TAG, "MyAdapter.getView\t position:"+position);
+      //Log.d(TAG, "MyAdapter.getView\t position:"+position);
       return super.getView(position, convertView, parent);
     }
   }

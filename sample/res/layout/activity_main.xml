@@ -25,6 +25,7 @@
 		android:paddingLeft="@dimen/activity_vertical_margin"
 		android:paddingTop="@dimen/activity_vertical_margin"
 		android:text="Add Sheet Implicitly"
+		android:visibility="gone"
 		tools:ignore="HardcodedText" />
 
 	<com.tackmobile.sheets.SheetLayout

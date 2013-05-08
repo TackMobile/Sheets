@@ -7,6 +7,7 @@ import java.util.Comparator;
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.app.Fragment;
@@ -47,6 +48,8 @@ public class SheetLayout extends ViewGroup {
   private static final int INVALID_POINTER = -1;
   
   private static final int DEFAULT_OFFSCREEN_SHEETS = 1;
+  
+  private static final float MAX_ALPHA = 0.3f;
 
   //private static final int MIN_DISTANCE_FOR_FLING = 25; // dp
   
@@ -137,6 +140,7 @@ public class SheetLayout extends ViewGroup {
    * Determines speed during touch scrolling
    */
   private VelocityTracker mVelocityTracker;
+  
   private int mMaximumVelocity;
   
   private EdgeEffectCompat mRightEdge;
@@ -144,83 +148,34 @@ public class SheetLayout extends ViewGroup {
   private boolean mFirstLayout = true;
 
   private OnSheetChangeListener mOnSheetChangeListener;
+  
   //private OnSheetChangeListener mInternalSheetChangeListener;
   
   private int mScrollState = SCROLL_STATE_IDLE;
+  
+  private int mOffscreenPageLimit = DEFAULT_OFFSCREEN_SHEETS;
 
   private final Runnable mUpdateSheetsRunnable = new Runnable() {
     @Override
     public void run() {
-      // Pop view from lowest view with "shouldPop" = true
-      final int clientWidth = getClientWidth();
-      int count = getChildCount();
-      int index;
-      View child;
-      LayoutParams lp;
-      ArrayList<View> remaining = new ArrayList<View>();
-      for (index=0; index<count; index++) {
-        child = getChildAt(index);
-        
-        // ignore views we don't recognize
-        if (child == null || !(child.getLayoutParams() instanceof LayoutParams))
-          continue;
-        
-        lp = (LayoutParams) child.getLayoutParams();
-        
-        // ignore decor views
-        if (lp.isDecor)
-          continue;
-        
-        if (lp.shouldPop) {
-          ViewPropertyAnimator.animate(child)
-            .setInterpolator(sInterpolator)
-            .setDuration(POP_DURATION)
-            .setListener(mPopAnimationListener)
-            .x(clientWidth);
-        } else {
-          remaining.add(child);
-        }
-      }
-
-      // Animate remaining sheets
-      boolean isTop = true;
-      float newX = 0;
-      count = remaining.size();
-      for (index=count-1; index>=0; index--) {
-        child = remaining.get(index);
-        if (isTop) {
-          newX = clientWidth - child.getMeasuredWidth();
-        }
-
-        float currX = ViewHelper.getX(child);
-        if (currX != newX) {
-          ViewPropertyAnimator.animate(child)
-              .setInterpolator(sInterpolator)
-              .setDuration(DEFAULT_ANIM_DURATION)
-              .x(newX);
-        }
-        
-        if (isTop) {
-          newX = 0;
-          isTop = false;
-        }
-      }
+      updateSheetsAnimated();
     }
   };
   
-  private Animator.AnimatorListener mPopAnimationListener = new Animator.AnimatorListener() {
+  private Animator.AnimatorListener mSheetAnimationListener = new Animator.AnimatorListener() {
     @Override
-    public void onAnimationStart(Animator animation) {
+    public void onAnimationStart(Animator a) {
       mPopulatePending = true;
       mIsAnimating = true;
     }
     
     @Override
-    public void onAnimationRepeat(Animator animation) {
+    public void onAnimationRepeat(Animator a) {
     }
     
     @Override
-    public void onAnimationEnd(Animator animation) {
+    public void onAnimationEnd(Animator a) {
+      if (DEBUG) Log.d(TAG, "mSheetAnimationListener.onAnimationEnd()");
       if (mAdapter == null) return;
       
       mAdapter.startUpdate(SheetLayout.this);
@@ -234,8 +189,13 @@ public class SheetLayout extends ViewGroup {
         child = getChildAt(index);
         sheetInfo = infoForChild(child);
         lp = (LayoutParams) child.getLayoutParams();
+        if (lp.isShadowLayer) continue;
+        
         if (lp.shouldPop) {
           mAdapter.destroyItem(SheetLayout.this, sheetInfo.position, sheetInfo.sheetFragment);
+          if (sheetInfo.shadowView != null) {
+            removeView(sheetInfo.shadowView);
+          }
           mItems.remove(sheetInfo);
           break;
         }
@@ -248,11 +208,9 @@ public class SheetLayout extends ViewGroup {
     }
     
     @Override
-    public void onAnimationCancel(Animator animation) {
+    public void onAnimationCancel(Animator a) {
     }
   };
-
-  private int mOffscreenPageLimit = DEFAULT_OFFSCREEN_SHEETS;
 
   
   public SheetLayout(Context context, AttributeSet attrs) {
@@ -268,8 +226,7 @@ public class SheetLayout extends ViewGroup {
   private void init(final Context context) {
     setWillNotDraw(false);
     //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
-    //setFocusable(true);
-    ViewCompat.setHasTransientState(this, true);
+    setFocusable(false);
 
     final ViewConfiguration configuration = ViewConfiguration.get(context);
     //final float density = context.getResources().getDisplayMetrics().density;
@@ -445,12 +402,13 @@ public class SheetLayout extends ViewGroup {
     
     switch (action) {
     case MotionEvent.ACTION_MOVE:
-      //Log.d(TAG, "onInterceptTouchEvent ACTION_MOVE !!!");
       /*
        * If we got here, then mIsBeing dragged must be false still.
+       * 
+       * Determine if we should intercept the move event? (this would 
+       * prevent children from even having a chance at implementing the 
+       * action)
        */
-      // Determine if we should intercept the move event? (assuming we haven't already) 
-      
       final int activePointerId = mActivePointerId;
       if (activePointerId == INVALID_POINTER) {
           // If we don't have a valid id, the touch down wasn't on content.
@@ -464,7 +422,7 @@ public class SheetLayout extends ViewGroup {
       final float yDiff = Math.abs(y - mInitialMotionY);
       //if (DEBUG) Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
 
-      if (dx != 0 && canScroll(this, false, (int) dx, (int) x, (int) y)) {
+      if (dx != 0 && canScrollHorizontally(this, false, (int) dx, (int) x, (int) y)) {
         // Nested view has scrollable area under this point. Let it be handled there.
         mLastMotionX = x;
         mLastMotionY = y;
@@ -473,8 +431,7 @@ public class SheetLayout extends ViewGroup {
         return false;
       }
       if (xDiff > mTouchSlop && xDiff * 0.5f > yDiff) {
-        if (DEBUG)
-          Log.v(TAG, "onInterceptTouchEvent Starting drag!");
+        if (DEBUG) Log.v(TAG, "onInterceptTouchEvent Starting drag!");
         mLastMotionX = dx > 0 ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;
         mLastMotionY = y;
         mIsBeingDragged = true;
@@ -485,8 +442,7 @@ public class SheetLayout extends ViewGroup {
         // direction to be counted as a drag... abort
         // any attempt to drag horizontally, to work correctly
         // with children that have scrolling containers.
-        if (DEBUG)
-          Log.v(TAG, "onInterceptTouchEvent Starting unable to drag!");
+        if (DEBUG) Log.v(TAG, "onInterceptTouchEvent Starting unable to drag!");
         mIsUnableToDrag = true;
       }
       if (mIsBeingDragged) {
@@ -547,9 +503,10 @@ public class SheetLayout extends ViewGroup {
     final int childCount = getChildCount();
     if (childCount < 1 ) return false;
     
-    View topSheet = getChildAt(getChildCount() - 1);
-    SheetInfo info = infoForChild(topSheet);
-    if (info == null || info.sheetFragment == null) return false;   // Can't touch a sheet that doesn't exist yet
+    SheetInfo topInfo = infoForPosition(getCurrentItemPosition());
+    if (topInfo == null || topInfo.sheetFragment == null) return false;   // Can't touch a sheet that doesn't exist yet
+      
+    View topSheet = topInfo.sheetFragment.getView();
     
     float eX = ev.getX();
     float left = ViewHelper.getX(topSheet);
@@ -675,25 +632,28 @@ public class SheetLayout extends ViewGroup {
   private boolean performDrag(float x) {
     boolean needsInvalidate = false;
     
-    //final SheetInfo topItem = mItems.get(mItems.size() - 1); // assume last is top
-    final View topChild = getChildAt(getChildCount() - 1);
+    
+    final int topPosition = getCurrentItemPosition();
+    final SheetInfo topInfo = infoForPosition(topPosition);
+    final View topChild = topInfo.sheetFragment.getView();
+    final View topShadow = topInfo.shadowView;
 
     final float deltaX = mLastMotionX - x;
     mLastMotionX = x;
 
     float oldTopX = ViewHelper.getX(topChild);
     float newTopX = oldTopX - deltaX;
-    final int width = getClientWidth();
+    final int clientWidth = getClientWidth();
     
     // Bounds apply to topChild X value
-    float leftBound = width - topChild.getWidth(); // left bound is when top sheet right edge matches right edge of screen
-    float rightBound = width; // right bound is when top sheet is off the screen
+    float leftBound = clientWidth - topChild.getWidth(); // left bound is when top sheet right edge matches right edge of screen
+    float rightBound = clientWidth; // right bound is when top sheet is off the screen
 
     // over-scroll calculations for blue edge effect
     // only visible for leftBound / right edge
     if (newTopX < leftBound) {
       float over = leftBound - newTopX;
-      needsInvalidate = mRightEdge.onPull(Math.abs(over) / width);
+      needsInvalidate = mRightEdge.onPull(Math.abs(over) / clientWidth);
       newTopX = leftBound;
     } else if (newTopX > rightBound) {
       newTopX = rightBound;
@@ -706,35 +666,47 @@ public class SheetLayout extends ViewGroup {
     
     // Translate relevant views to new X values
     ViewHelper.setX(topChild, newTopX);
-    int next = getChildCount() - 2;
+    if (topShadow != null) {
+      // 100% : nextLeft = clientWidth - nextWidth
+      // 0%   : nextLeft = clientWidth
+      float alphaRatio = Math.max(0, Math.min(1, (clientWidth - newTopX) / topChild.getMeasuredWidth()));  // should be between 0 and 1
+      if (topInfo.shadowView != null)
+        ViewHelper.setAlpha(topInfo.shadowView, alphaRatio * MAX_ALPHA);           // between 0 and MAX
+      
+      if (DEBUG) Log.d(TAG, "Setting shadow alpha % = "+alphaRatio);
+    }
+    
+    SheetInfo nextInfo; 
     View prevChild = topChild;
     View nextChild;
     float prevLeft = ViewHelper.getX(prevChild);
-    float nextRight;
     float nextLeft;
     int nextWidth;
-    while (next >= 0) {
-      nextChild = getChildAt(next);
+    final int topIndex = mItems.indexOf(topInfo);
+    for (int i=topIndex - 1; i>=0; i--) {
+      nextInfo = mItems.get(i);
+      nextChild = nextInfo.sheetFragment.getView();
       nextWidth = nextChild.getMeasuredWidth();
       nextLeft = ViewHelper.getX(nextChild);
-      nextRight = nextLeft + nextWidth;
-      if (prevLeft > nextRight) {
+       
+      if (prevLeft  > nextLeft + nextWidth) { 
+        // prevent gap while dragging to the right
         nextLeft = prevLeft - nextWidth;
         ViewHelper.setX(nextChild, nextLeft);
       } else if (nextLeft > prevLeft - nextWidth) {
+        // prevent overlap while dragging to left
         nextLeft = Math.max(0, prevLeft - nextWidth);
         ViewHelper.setX(nextChild, nextLeft);
-      } else {
-        break;
+      //} else {
+      //  break;
       }
       prevChild = nextChild;
       prevLeft = nextLeft;
-      next--;
     }
 
     return needsInvalidate;
   }
-
+  
   private void endDrag() {
     mIsBeingDragged = false;
     mIsUnableToDrag = false;
@@ -745,8 +717,9 @@ public class SheetLayout extends ViewGroup {
     }
 
     // Check current item
-    final int topPosition = getChildCount() - 1;
-    final View topSheet = getChildAt(topPosition);
+    final int topPosition = getCurrentItemPosition();
+    final SheetInfo topInfo = infoForPosition(topPosition);
+    final View topSheet = topInfo.sheetFragment.getView();
     final float topX = ViewHelper.getX(topSheet);
     final int clientWidth = getClientWidth();
     final int halfSheetWidth = topSheet.getMeasuredWidth() / 2;
@@ -756,32 +729,116 @@ public class SheetLayout extends ViewGroup {
       ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
     }
   }
-
-  protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
-    if (v instanceof ViewGroup) {
-      final ViewGroup group = (ViewGroup) v;
-      final int scrollX = v.getScrollX();
-      final int scrollY = v.getScrollY();
-      final int count = group.getChildCount();
-      // Count backwards - let topmost views consume scroll distance first.
+  
+  void updateSheetsAnimated() {
+    // Pop all views with "shouldPop" = true
+    final int clientWidth = getClientWidth();
+    SheetInfo info;
+    int index, count;
+    View child;
+    LayoutParams lp;
+    ArrayList<SheetInfo> remaining = new ArrayList<SheetInfo>();
+    
+    count = mItems.size();
+    for (index=0; index<count; index++) {
+      /* Size can change during loop if back is pressed multiple times really fast so 
+      *  we must validate size at beginning of each loop execution
+      */
+      if (index >= mItems.size()) break;
       
-      final View child = group.getChildAt(count - 1);
-      if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
-          && y + scrollY < child.getBottom()
-          && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
-        return true;
+      info = mItems.get(index);
+      child = info.sheetFragment.getView();
+      
+      // ignore views we don't recognize
+      if (child == null || !(child.getLayoutParams() instanceof LayoutParams))
+        continue;
+      
+      lp = (LayoutParams) child.getLayoutParams();
+      
+      if (lp.shouldPop) {
+        ViewPropertyAnimator.animate(child)
+          .setInterpolator(sInterpolator)
+          .setDuration(POP_DURATION)
+          .setListener(mSheetAnimationListener)
+          .x(clientWidth);
+        if (info.shadowView != null) {
+          ViewPropertyAnimator.animate(info.shadowView)
+            .setInterpolator(sInterpolator)
+            .setDuration(POP_DURATION)
+            .alpha(0);
+        }
+      } else {
+        remaining.add(info);
       }
-      // Only check the top child, no other children should get touch events
-//      for (int i = count - 1; i >= 0; i--) {
-//        // TODO: Add versioned support here for transformed views.
-//        // This will not work for transformed views in Honeycomb+
-//        final View child = group.getChildAt(i);
-//        if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
-//            && y + scrollY < child.getBottom()
-//            && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
-//          return true;
-//        }
+    }
+    
+    // Animate remaining sheets
+    boolean isTop = true;
+    float newX = 0f;
+    count = remaining.size();
+    for (index=count-1; index>=0; index--) {
+      info = remaining.get(index);
+      child = info.sheetFragment.getView();
+      if (isTop) {
+        newX = clientWidth - child.getMeasuredWidth();
+      }
+
+      float currX = ViewHelper.getX(child);
+      if (currX != newX) {
+        ViewPropertyAnimator.animate(child)
+            .setInterpolator(sInterpolator)
+            .setListener(mSheetAnimationListener)
+            .setDuration(DEFAULT_ANIM_DURATION)
+            .x(newX);
+        if (info.shadowView != null) {
+          ViewPropertyAnimator.animate(info.shadowView)
+              .setInterpolator(sInterpolator)
+              .setDuration(DEFAULT_ANIM_DURATION)
+              .alpha(MAX_ALPHA);
+        }
+      }
+      
+      if (isTop) {
+        newX = 0f;
+        isTop = false;
+      }
+    }
+  }
+
+  protected boolean canScrollHorizontally(View v, boolean checkV, int dx, int x, int y) {
+//    if (v instanceof ViewGroup) {
+//      final ViewGroup group = (ViewGroup) v;
+//      final int scrollX = v.getScrollX();
+//      final int scrollY = v.getScrollY();
+//      final int count = group.getChildCount();
+//      
+//      final View child = group.getChildAt(count - 1);
+//      
+//      // Only check the top child, no other children should get touch events
+//      if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
+//          && y + scrollY < child.getBottom()
+//          && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
+//        return true;
 //      }
+//    }
+
+    if (v instanceof ViewGroup) {
+        final ViewGroup group = (ViewGroup) v;
+        final int scrollX = v.getScrollX();
+        final int scrollY = v.getScrollY();
+        final int count = group.getChildCount();
+        // Count backwards - let topmost views consume scroll distance first.
+        for (int i = count - 1; i >= 0; i--) {
+            // TODO: Add versioned support here for transformed views.
+            // This will not work for transformed views in Honeycomb+
+            final View child = group.getChildAt(i);
+            if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() &&
+                    y + scrollY >= child.getTop() && y + scrollY < child.getBottom() &&
+                    canScrollHorizontally(child, true, dx, x + scrollX - child.getLeft(),
+                            y + scrollY - child.getTop())) {
+                return true;
+            }
+        }
     }
 
     return checkV && ViewCompat.canScrollHorizontally(v, -dx);
@@ -829,7 +886,7 @@ public class SheetLayout extends ViewGroup {
       case KeyEvent.KEYCODE_BACK:
         // Pop top sheet fragment
         if (mAdapter.getCount() > 0) {
-          mAdapter.popSheetFragment(mAdapter.getCount() - 1);
+          mAdapter.popSheetFragment(getCurrentItemPosition());
           handled = true;
         }
       }
@@ -893,14 +950,11 @@ public class SheetLayout extends ViewGroup {
       }
     }
   }
-  
+
   // We want the duration of the page snap animation to be influenced by the
-  // distance that
-  // the screen has to travel, however, we don't want this duration to be
-  // effected in a
-  // purely linear fashion. Instead, we use this method to moderate the effect
-  // that the distance
-  // of travel has on the overall snap duration.
+  // distance that the screen has to travel, however, we don't want this duration to be effected in a
+  // purely linear fashion. Instead, we use this method to moderate the effect that the distance of travel has on the
+  // overall snap duration.
   float distanceInfluenceForSnapDuration(float f) {
     f -= 0.5f; // center the values about 0.
     f *= 0.3f * Math.PI / 2.0f;
@@ -918,6 +972,19 @@ public class SheetLayout extends ViewGroup {
     } else {
       mItems.add(index, sheetInfo);
     }
+    
+    if (mShadowEnabled) {
+      // Attempt to find ShadowView (if view already exists such as after a rotation)
+      int indexOfSheet = indexOfChild(sheetInfo.sheetFragment.getView());
+      if (indexOfSheet > 0) {
+        View viewBelow = getChildAt(indexOfSheet - 1);
+        LayoutParams lp = (LayoutParams) viewBelow.getLayoutParams();
+        if (lp.isShadowLayer) {
+          sheetInfo.shadowView = viewBelow;
+        }
+      }
+    }
+    
     return sheetInfo;
   }
   
@@ -929,6 +996,16 @@ public class SheetLayout extends ViewGroup {
       fragView = (ViewGroup) sheetInfo.sheetFragment.getView();
       if (fragView == child || fragView.getChildAt(0) == child) {
         return sheetInfo;
+      }
+    }
+    return null;
+  }
+
+  SheetInfo infoForShadowView(View child) {
+    for (int i=0; i<mItems.size(); i++) {
+      SheetInfo info = mItems.get(i);
+      if (info.shadowView == child) {
+        return info;
       }
     }
     return null;
@@ -997,6 +1074,11 @@ public class SheetLayout extends ViewGroup {
         }
         LayoutParams lp = (LayoutParams) sheetInfo.sheetFragment.getView().getLayoutParams();
         lp.shouldPop = true;
+        
+        if (sheetInfo.shadowView != null) {
+          lp = (LayoutParams) sheetInfo.shadowView.getLayoutParams();
+          lp.shouldPop = true;
+        }
         
         needPopulate = true;
         continue;
@@ -1077,7 +1159,14 @@ public class SheetLayout extends ViewGroup {
             break;
           }
           if (pos == sheetInfo.position) {
-            mItems.remove(itemIndex);
+            SheetInfo removedInfo = mItems.remove(itemIndex);
+            View v = removedInfo.sheetFragment.getView();
+            LayoutParams lp = (LayoutParams) v.getLayoutParams();
+            lp.shouldPop = true;
+            if (removedInfo.shadowView != null) {
+              lp = (LayoutParams) removedInfo.shadowView.getLayoutParams();
+              lp.shouldPop = true;
+            }
             mAdapter.destroyItem(this, pos, sheetInfo.sheetFragment);
             if (DEBUG) Log.i(TAG, "populate() - destroyItem() with pos: " + pos + " view: " + sheetInfo.sheetFragment);
             itemIndex--;
@@ -1104,24 +1193,22 @@ public class SheetLayout extends ViewGroup {
       }
     }*/
 
-    mAdapter.finishUpdate(this);
-    
-    // Update Z-index of all views
-    SheetInfo sheetInfo;
-    final int infoCount = mItems.size();
-    for (int i=0; i<infoCount; i++) {
-      sheetInfo = mItems.get(i);
-      sheetInfo.sheetFragment.getView().bringToFront();
-    }
+    mAdapter.finishUpdate(this);    // Commits the fragment transaction (addView get's called here)
 
-    // Check width ement of current sheets
+    // Check width of current sheets
     // Update LayoutParams as needed.
+    SheetInfo sheetInfo;
     final int childCount = getChildCount();
     for (int i=0; i<childCount; i++) {
       final View child = getChildAt(i);
-      final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-      sheetInfo = infoForChild(child);
       
+      final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+      if (lp.isShadowLayer) {
+        lp.widthFactor = 1.0f;
+        continue;
+      }
+      
+      sheetInfo = infoForChild(child);
       if (sheetInfo != null) {
         // Transfer needsLayout request to the LP, then discard
         lp.needsLayout |= sheetInfo.needsLayout;
@@ -1135,6 +1222,8 @@ public class SheetLayout extends ViewGroup {
         }
       }
     }
+    
+    fixChildrenZIndex();
 
     if (hasFocus()) {
       View currentFocused = findFocus();
@@ -1151,7 +1240,18 @@ public class SheetLayout extends ViewGroup {
         }
       }
     }
-    
+  }
+  
+  private void fixChildrenZIndex() {
+    // Update Z-index of all views
+    SheetInfo sheetInfo;
+    final int infoCount = mItems.size();
+    for (int i=0; i<infoCount; i++) {
+      sheetInfo = mItems.get(i);
+      if (sheetInfo.shadowView != null)
+        sheetInfo.shadowView.bringToFront();
+      sheetInfo.sheetFragment.getView().bringToFront();
+    }
   }
 
   @Override
@@ -1159,7 +1259,26 @@ public class SheetLayout extends ViewGroup {
     if (!checkLayoutParams(params)) {
       params = generateLayoutParams(params);
     }
+    final SheetInfo info = infoForChild(child);
     final LayoutParams lp = (LayoutParams) params;
+
+    // Skip adding shadows if we don't have info (probably happening during rotation and shadows will be restored
+    // automatically)
+    if (mShadowEnabled) {
+      final View shadowView = generateShadowView();
+      final LayoutParams shadowLp = new LayoutParams();
+      if (info != null ) info.shadowView = shadowView;
+      shadowLp.isShadowLayer = true;
+      
+      if (mInLayout) {
+        shadowLp.needsMeasure = true;
+        shadowLp.needsLayout = true;
+        addViewInLayout(shadowView, index, shadowLp);
+      } else {
+        super.addView(shadowView, index, shadowLp);
+      }
+    }
+    
     if (mInLayout) { // probably more like "mInMeasure"
       lp.needsMeasure = true;
       lp.needsLayout = true;
@@ -1172,9 +1291,21 @@ public class SheetLayout extends ViewGroup {
 //      if (child.getVisibility() != GONE) {
 //        child.setDrawingCacheEnabled(mScrollingCacheEnabled);
 //      } else {
-        child.setDrawingCacheEnabled(false);
+//        child.setDrawingCacheEnabled(false);
 //      }
 //    }
+  }
+  
+  private View generateShadowView() {
+    View shadowView = new View(getContext());
+    shadowView.setWillNotDraw(false);
+    shadowView.setBackgroundColor(Color.BLACK);
+    shadowView.setDrawingCacheEnabled(true);
+    shadowView.setDrawingCacheBackgroundColor(Color.BLACK);
+    shadowView.setClickable(true);
+    shadowView.setFocusable(false);
+    ViewHelper.setAlpha(shadowView, 0f);
+    return shadowView;
   }
   
   @Override
@@ -1183,12 +1314,26 @@ public class SheetLayout extends ViewGroup {
   }
   
   @Override
-  public ViewGroup.LayoutParams generateLayoutParams(AttributeSet attrs) {
+  public LayoutParams generateLayoutParams(AttributeSet attrs) {
     return new LayoutParams(getContext(), attrs);
   }
 
   @Override
   public void removeView(View view) {
+    // Check if we need to remove the shadow view as well
+    int index = this.indexOfChild(view);
+    if (index > 0) {
+      View viewBelow = getChildAt(index-1);
+      LayoutParams lp = (LayoutParams) viewBelow.getLayoutParams();
+      if (lp.isShadowLayer) {
+        if (mInLayout) {
+          removeViewInLayout(viewBelow);
+        } else {
+          super.removeView(viewBelow);
+        }
+      }
+    }
+    
     if (mInLayout) {
       removeViewInLayout(view);
     } else {
@@ -1239,66 +1384,60 @@ public class SheetLayout extends ViewGroup {
   }
 
   @Override
-  protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    super.onSizeChanged(w, h, oldw, oldh);
-
-    // Make sure scroll position is set correctly.
-    if (w != oldw) {
-      //recomputeScrollPosition(w, oldw, 0, 0);
-    }
-  }
-
-  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    final int count = getChildCount();
-    int width = r - l;
-    int height = b - t;
-    int paddingLeft = getPaddingLeft();
-    int paddingTop = getPaddingTop();
-    int paddingRight = getPaddingRight();
-    int paddingBottom = getPaddingBottom();
+    //final int count = getChildCount();
+    final int count = mItems.size();
     
-    // No decor views, no decor view skip.
-    
+    final int width = r - l;
+    final int height = b - t;
+    final int paddingLeft = getPaddingLeft();
+    final int paddingTop = getPaddingTop();
+    final int paddingRight = getPaddingRight();
+    final int paddingBottom = getPaddingBottom();
     
     final int clientWidth = width - paddingLeft - paddingRight;
     final int clientHeight = height - paddingTop - paddingBottom;
     final int heightSpec = MeasureSpec.makeMeasureSpec(clientHeight, MeasureSpec.EXACTLY);
     int childTop = paddingTop;
     int childLeft;
-
-    for (int i = 0; i < count; i++) {
-      final View child = getChildAt(i);
-      if (child.getVisibility() != GONE) {
-        final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-        if (infoForChild(child) != null) {
-          if (lp.needsMeasure) {
-            // This was added during layout and needs measurement.
-            // Do it now that we know what we're working with.
-            final int widthSpec = MeasureSpec.makeMeasureSpec((int) (clientWidth * lp.widthFactor), MeasureSpec.EXACTLY);
-            child.measure(widthSpec, heightSpec);
-            childLeft = clientWidth;
-            lp.needsMeasure = false;
-          } else if (i == count - 1) {
-            childLeft = clientWidth;
-          } else {
-            float currX = ViewHelper.getX(child);
-            if (0 <= currX && currX < clientWidth)
-              childLeft = (int) currX;
-            else
-              childLeft = 0;
-          }
-          
-          //if (DEBUG) {
-          //  Log.v(TAG, "Positioning\t #" + i + " f=" + sheetInfo.sheetFragment.getClass().getSimpleName() + ":"
-          //      + childLeft + "," + childTop + " " + child.getMeasuredWidth() + "x" + child.getMeasuredHeight());
-          //}
-          
-          if (lp.needsLayout) {
-            child.layout(childLeft, childTop, childLeft + child.getMeasuredWidth(), childTop + child.getMeasuredHeight());
-            lp.needsLayout = false;
-          }
-        }
+    
+    boolean isTop = true;
+    for (int i=count-1; i>=0; i--) {
+      final SheetInfo info = mItems.get(i);
+      if (info.sheetFragment == null) continue;
+      
+      final View child = info.sheetFragment.getView();
+      if (child == null || child.getVisibility() == GONE) continue;
+      
+      final View shadow = info.shadowView;
+      final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+      
+      if (lp.needsMeasure) {
+        final int widthSpec = MeasureSpec.makeMeasureSpec((int) (clientWidth * lp.widthFactor), MeasureSpec.EXACTLY);
+        child.measure(widthSpec, heightSpec);
+        childLeft = clientWidth;
+        lp.needsMeasure = false;
+        
+        if (shadow != null)
+          shadow.measure(widthSpec, heightSpec);
+      }
+      
+      if (isTop) {
+        childLeft = clientWidth;
+        isTop = false;
+      } else {
+        final float currX = ViewHelper.getX(child);
+        if (0 <= currX && currX < clientWidth)
+          childLeft = (int) currX;
+        else
+          childLeft = 0;
+      }
+      
+      if (lp.needsLayout) {
+        child.layout(childLeft, childTop, childLeft+child.getMeasuredWidth(), childTop+child.getMeasuredHeight());
+        lp.needsLayout = false;
+        if (shadow != null)
+          shadow.layout(l, t, r, b);
       }
     }
     
@@ -1343,10 +1482,6 @@ public class SheetLayout extends ViewGroup {
     SavedState ss = new SavedState(superState);
     if (mAdapter != null) {
       ss.adapterState = mAdapter.saveState();
-//      if (mItems != null && mItems.size() > 0) {
-//        ss.sheetInfos = new SheetInfo[mItems.size()];
-//        mItems.toArray(ss.sheetInfos);
-//      }
     }
     return ss;
   }
@@ -1367,21 +1502,12 @@ public class SheetLayout extends ViewGroup {
       mRestoredAdapterState = ss.adapterState;
       mRestoredClassLoader = ss.loader;
     }
-    
-//    mItems.clear();
-//    if (ss.sheetInfos != null) {
-//      for (int i=0; i<ss.sheetInfos.length; i++) {
-//        mItems.add((SheetInfo)ss.sheetInfos[i]);
-//      }
-//    }
-//    
-//    mNeedRestoreFragments = restoreSheetInfoFragments();
   }
 
+  
   //
   // 'Inner's
   //
-
 
   /**
    * This is the persistent state that is saved by ViewPager.  Only needed
@@ -1439,6 +1565,7 @@ public class SheetLayout extends ViewGroup {
     int position;
     float widthFactor;
     boolean needsLayout;
+    View shadowView;
 
     /* Parcelable implementation */
 
@@ -1572,7 +1699,7 @@ public class SheetLayout extends ViewGroup {
      */
     public boolean shouldPop = false;
     
-    public boolean isDecor = false;
+    public boolean isShadowLayer = false;
 
     public LayoutParams() {
       super(MATCH_PARENT, MATCH_PARENT);

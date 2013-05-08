@@ -42,6 +42,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
     setContentView(R.layout.activity_main);
 
     mSheetLayout = (SheetLayout) findViewById(R.id.sheet_layout);
+    mSheetLayout.setShadowEnabled(true);
     mAdapter = new SampleSheetAdapter(this, getSupportFragmentManager());
     mSheetLayout.setAdapter(mAdapter);
   }
