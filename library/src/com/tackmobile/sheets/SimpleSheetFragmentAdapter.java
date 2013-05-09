@@ -13,19 +13,28 @@ import android.view.ViewGroup;
 public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements ISheetListener {
 
   private static final String KEY_DESCRIPTORS = "descriptors";
+  
   private ArrayList<SheetDescriptor> mDescriptors;
+  
   private Context mContext;
 
   public SimpleSheetFragmentAdapter(Context context, FragmentManager fm) {
     super(fm);
     mContext = context;
   }
+  
+  public SheetDescriptor getDescriptor(int position) {
+    if (mDescriptors != null && mDescriptors.size() > position)
+      return mDescriptors.get(position);
+    else
+      return null;
+  }
 
   @Override
   public int getCount() {
     return mDescriptors != null ? mDescriptors.size() : 0;
   }
-
+  
   @Override
   public Fragment getItem(int position) {
     SheetDescriptor info = mDescriptors.get(position);
@@ -152,6 +161,7 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
       dest.writeString(clazz.getCanonicalName());
+      dest.writeBundle(args);
     }
 
     @Override
