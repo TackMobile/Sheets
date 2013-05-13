@@ -1,11 +1,13 @@
 package com.tackmobile.sheetssample;
 
 import android.content.Context;
+import android.database.DataSetObserver;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ListFragment;
 import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +33,10 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
   private ISheetListener mListener;
 
   private MyAdapter mAdapter;
+  
+  private TextView mTextListCount;
+
+  private DataSetObserver mObserver;
   
   @Override
   public void setSheetListener(ISheetListener listener) {
@@ -81,6 +87,30 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     textViewIndex.setText("View Index : "+viewIndex);
     
     setListAdapter();
+    
+    mTextListCount = (TextView) view.findViewById(R.id.text_list_count);
+    mTextListCount.setText("List count: "+getListAdapter().getCount());
+    
+  }
+  
+  @Override
+  public void onResume() {
+    super.onResume();
+    mObserver = new DataSetObserver() {
+      @Override
+      public void onChanged() {
+        mTextListCount.setText("List count: "+getListAdapter().getCount());
+      }
+    };
+    getListAdapter().registerDataSetObserver(mObserver);
+
+  }
+  
+  @Override
+  public void onPause() {
+    super.onPause();
+    getListAdapter().unregisterDataSetObserver(mObserver);
+    mObserver = null;
   }
   
   public void setListAdapter() {
@@ -112,8 +142,26 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     mAdapter.update(data);
     
     if (isResumed()) {
-      SheetSampleListView listView = (SheetSampleListView) getListView();
-      listView.forceLayoutChildren();
+      final View view = getView();
+      
+      Bundle randomColorArgs = getRandomColorArgs();
+      int color = randomColorArgs.getInt(KEY_COLOR);
+      view.setBackgroundColor(color);
+      
+      //SheetSampleListView listView = (SheetSampleListView) getListView();
+      //listView.forceLayoutChildren();
+      mTextListCount.setText("List count: "+getListAdapter().getCount());
+      mTextListCount.invalidate();
+      mTextListCount.forceLayout();
+      mTextListCount.requestFocus();
+      mTextListCount.buildDrawingCache();
+      mTextListCount.clearFocus();
+      mTextListCount.postInvalidate();
+      mTextListCount.setBackgroundColor(Color.WHITE);
+      Log.d("SheetSampleSheetFragment", "TextView trying to update");
+      
+      view.refreshDrawableState();
+      view.invalidate();
     }
   }
   

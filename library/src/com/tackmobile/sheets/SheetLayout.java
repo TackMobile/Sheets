@@ -7,8 +7,8 @@ import java.util.Comparator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
-import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.app.Fragment;
@@ -55,13 +55,6 @@ public class SheetLayout extends ViewGroup {
   //private static final int MIN_DISTANCE_FOR_FLING = 25; // dp
   
   //private static final int MIN_FLING_VELOCITY = 200; // dp
-  
-  //private static final boolean USE_CACHE = true;
-
-  // If the Sheet is at least this close to its final position, complete the scroll
-  // on touch down and let the user interact with the content inside instead of
-  // "catching" the flinging pager.
-  //private static final int CLOSE_ENOUGH = 2; // dp
 
   private static final Interpolator sInterpolator = new Interpolator() {
     public float getInterpolation(float t) {
@@ -93,9 +86,10 @@ public class SheetLayout extends ViewGroup {
    */
   public static final int SCROLL_STATE_SETTLING = 2;
 
-  private static final long DEFAULT_ANIM_DURATION = 500;
+  private static final long DEFAULT_ANIM_DURATION = 150;
   
-  private static final long POP_DURATION = 500;
+  private static final long POP_DURATION = 150;
+  
   
   //
   // Member vars
@@ -206,13 +200,14 @@ public class SheetLayout extends ViewGroup {
       
       mPopulatePending = false;
       mIsAnimating = false;
+      ViewCompat.postInvalidateOnAnimation(SheetLayout.this);
     }
     
     @Override
     public void onAnimationCancel(Animator a) {
     }
   };
-
+  
   private View.OnClickListener mShadowClickListener = new View.OnClickListener() {
     @Override
     public void onClick(View v) {
@@ -233,7 +228,7 @@ public class SheetLayout extends ViewGroup {
   }
 
   private void init(final Context context, AttributeSet attrs) {
-    setWillNotDraw(false);
+    //setWillNotDraw(false);
     //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     setFocusable(false);
 
@@ -241,44 +236,30 @@ public class SheetLayout extends ViewGroup {
     //final float density = context.getResources().getDisplayMetrics().density;
 
     mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(configuration);
-    //mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
+    //mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
+    //mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
     mRightEdge = new EdgeEffectCompat(context);
 
-    //mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
-    
     //mDefaultGutterSize = (int) (DEFAULT_GUTTER_SIZE * density);
     
-    // TODO: Add accessibility delegate possibly
+    // TODO: Add accessibility delegate
     // ViewCompat.setAccessibilityDelegate(this, new MyAccessibilityDelegate());
     //if (ViewCompat.getImportantForAccessibility(this)
     //    == ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
     //ViewCompat.setImportantForAccessibility(this,
     //        ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_YES);
     
-    
     // process attrs
     if (attrs != null) {
       TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.SheetLayout);
-      mShadowEnabled = a.getBoolean(R.styleable.SheetLayout_shadowsEnabled, false);
-      a.recycle();
+      try {
+        mShadowEnabled = a.getBoolean(R.styleable.SheetLayout_shadowsEnabled, false);
+      } finally {
+        a.recycle();
+      }
     }
   }
-
-//  private void setScrollingCacheEnabled(boolean enabled) {
-//    if (mScrollingCacheEnabled != enabled) {
-//      mScrollingCacheEnabled = enabled;
-//      if (USE_CACHE) {
-//        final int size = getChildCount();
-//        for (int i = 0; i < size; ++i) {
-//          final View child = getChildAt(i);
-//          if (child.getVisibility() != GONE) {
-//            child.setDrawingCacheEnabled(enabled);
-//          }
-//        }
-//      }
-//    }
-//  }
   
   public int getOffscreenPageLimit() {
     return mOffscreenPageLimit;
@@ -472,6 +453,7 @@ public class SheetLayout extends ViewGroup {
        * Remember location of down touch.
        * According to Google source code, ACTION_DOWN always refers to pointer index 0.
        */
+      mPopulatePending = false;
       mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
       mLastMotionX = mInitialMotionX = ev.getX();
       mLastMotionY = mInitialMotionY = ev.getY();
@@ -604,8 +586,7 @@ public class SheetLayout extends ViewGroup {
     case MotionEvent.ACTION_UP:
       //Log.d(TAG, "onTouchEvent ACTION_UP");
       if (mIsBeingDragged) {
-        final VelocityTracker velocityTracker = mVelocityTracker;
-        velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+        mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
         mPopulatePending = true;
         mActivePointerId = INVALID_POINTER;
         endDrag();
@@ -820,22 +801,6 @@ public class SheetLayout extends ViewGroup {
   }
 
   protected boolean canScrollHorizontally(View v, boolean checkV, int dx, int x, int y) {
-//    if (v instanceof ViewGroup) {
-//      final ViewGroup group = (ViewGroup) v;
-//      final int scrollX = v.getScrollX();
-//      final int scrollY = v.getScrollY();
-//      final int count = group.getChildCount();
-//      
-//      final View child = group.getChildAt(count - 1);
-//      
-//      // Only check the top child, no other children should get touch events
-//      if (x + scrollX >= child.getLeft() && x + scrollX < child.getRight() && y + scrollY >= child.getTop()
-//          && y + scrollY < child.getBottom()
-//          && canScroll(child, true, dx, x + scrollX - child.getLeft(), y + scrollY - child.getTop())) {
-//        return true;
-//      }
-//    }
-
     if (v instanceof ViewGroup) {
         final ViewGroup group = (ViewGroup) v;
         final int scrollX = v.getScrollX();
@@ -913,6 +878,7 @@ public class SheetLayout extends ViewGroup {
    */
   @Override
   public void addFocusables(ArrayList<View> views, int direction, int focusableMode) {
+    Log.d(TAG, "!!! addFocusables !!!");
     final int focusableCount = views.size();
 
     final int descendantFocusability = getDescendantFocusability();
@@ -954,6 +920,7 @@ public class SheetLayout extends ViewGroup {
   
   @Override
   public void addTouchables(ArrayList<View> views) {
+    Log.d(TAG, "!!! addTouchables !!!");
     // Note that we don't call super.addTouchables(), which means that
     // we don't call View.addTouchables(). This is okay because the
     // SheetLayout is not touchable
@@ -963,6 +930,39 @@ public class SheetLayout extends ViewGroup {
         child.addTouchables(views);
       }
     }
+  }
+
+  /**
+   * We only want the current page that is being shown to be focusable.
+   */
+  @Override
+  protected boolean onRequestFocusInDescendants(int direction, Rect previouslyFocusedRect) {
+    int index;
+    int increment;
+    int end;
+    int count = getChildCount();
+    if ((direction & FOCUS_FORWARD) != 0) {
+      index = 0;
+      increment = 1;
+      end = count;
+    } else {
+      index = count - 1;
+      increment = -1;
+      end = -1;
+    }
+    final int currentItemPosition = getCurrentItemPosition();
+    for (int i = index; i != end; i += increment) {
+      View child = getChildAt(i);
+      if (child.getVisibility() == VISIBLE) {
+        SheetInfo sheetInfo = infoForChild(child);
+        if (sheetInfo != null && sheetInfo.position == currentItemPosition) {
+          if (child.requestFocus(direction, previouslyFocusedRect)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   // We want the duration of the page snap animation to be influenced by the
@@ -1238,8 +1238,8 @@ public class SheetLayout extends ViewGroup {
     }
     
     fixChildrenZIndex();
-
-    if (hasFocus()) {
+    
+    //if (hasFocus()) {
       View currentFocused = findFocus();
       sheetInfo = currentFocused != null ? infoForAnyChild(currentFocused) : null;
       if (sheetInfo == null || sheetInfo.position != adapterTopPosition) {
@@ -1253,7 +1253,7 @@ public class SheetLayout extends ViewGroup {
           }
         }
       }
-    }
+    //}
   }
   
   private void fixChildrenZIndex() {
@@ -1360,6 +1360,7 @@ public class SheetLayout extends ViewGroup {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    Log.d(TAG, "!!! onMeasure !!!");
     // For simple implementation, our internal size is always 0.
     // We depend on the container to specify the layout size of
     // our view. We can't really know what it is since we will be
@@ -1382,7 +1383,7 @@ public class SheetLayout extends ViewGroup {
     mInLayout = true;
     populate();
     mInLayout = false;
-
+    
     int size = getChildCount();
     for (int i = 0; i < size; ++i) {
       final View child = getChildAt(i);
@@ -1392,6 +1393,7 @@ public class SheetLayout extends ViewGroup {
 
         final LayoutParams lp = (LayoutParams) child.getLayoutParams();
         if (lp != null) {
+          Log.d(TAG, "Measuring child: "+i);
           final int widthSpec = MeasureSpec.makeMeasureSpec((int) (childWidthSize * lp.widthFactor), MeasureSpec.EXACTLY);
           child.measure(widthSpec, heightSpec);
           lp.needsMeasure = false;
@@ -1399,9 +1401,16 @@ public class SheetLayout extends ViewGroup {
       }
     }
   }
+  
+  @Override
+  protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+    super.onSizeChanged(w, h, oldw, oldh);
+    Log.d(TAG, "!!! onSizeChanged !!!");
+  }
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    Log.d(TAG, "!!! onLayout !!!");
     //final int count = getChildCount();
     final int count = mItems.size();
     
@@ -1459,38 +1468,38 @@ public class SheetLayout extends ViewGroup {
     }
     
     ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
-
+    
     mFirstLayout = false;
   }
-
-  @Override
-  public void draw(Canvas canvas) {
-    super.draw(canvas);
-    boolean needsInvalidate = false;
-
-    final int overScrollMode = ViewCompat.getOverScrollMode(this);
-    if (overScrollMode == ViewCompat.OVER_SCROLL_ALWAYS
-        || (overScrollMode == ViewCompat.OVER_SCROLL_IF_CONTENT_SCROLLS && mAdapter != null && mAdapter.getCount() > 1)) {
-      if (!mRightEdge.isFinished()) {
-        final int restoreCount = canvas.save();
-        final int width = getWidth();
-        final int height = getHeight() - getPaddingTop() - getPaddingBottom();
-
-        canvas.rotate(90);
-        canvas.translate(-getPaddingTop(), -width); // -(mLastOffset + 1) * width);
-        mRightEdge.setSize(height, width);
-        needsInvalidate |= mRightEdge.draw(canvas);
-        canvas.restoreToCount(restoreCount);
-      }
-    } else {
-      mRightEdge.finish();
-    }
-
-    if (needsInvalidate) {
-      // Keep animating
-      ViewCompat.postInvalidateOnAnimation(this);
-    }
-  }
+  
+//  @Override
+//  public void draw(Canvas canvas) {
+//    super.draw(canvas);
+//    boolean needsInvalidate = false;
+//
+//    final int overScrollMode = ViewCompat.getOverScrollMode(this);
+//    if (overScrollMode == ViewCompat.OVER_SCROLL_ALWAYS
+//        || (overScrollMode == ViewCompat.OVER_SCROLL_IF_CONTENT_SCROLLS && mAdapter != null && mAdapter.getCount() > 1)) {
+//      if (!mRightEdge.isFinished()) {
+//        final int restoreCount = canvas.save();
+//        final int width = getWidth();
+//        final int height = getHeight() - getPaddingTop() - getPaddingBottom();
+//
+//        canvas.rotate(90);
+//        canvas.translate(-getPaddingTop(), -width); // -(mLastOffset + 1) * width);
+//        mRightEdge.setSize(height, width);
+//        needsInvalidate |= mRightEdge.draw(canvas);
+//        canvas.restoreToCount(restoreCount);
+//      }
+//    } else {
+//      mRightEdge.finish();
+//    }
+//
+//    if (needsInvalidate) {
+//      // Keep animating
+//      ViewCompat.postInvalidateOnAnimation(this);
+//    }
+//  }
 
 
   @Override
