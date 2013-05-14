@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ListFragment;
 import android.text.format.DateUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,8 +21,6 @@ import com.tackmobile.sheets.ISheetListener;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter.SheetDescriptor;
 
 public class SheetSampleSheetFragment extends ListFragment implements ISheetFragment {
-  
-  //private static final String TAG = "SheetFragment";
 
   public static final String KEY_COLOR = "keyColor";
 
@@ -90,7 +87,6 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     
     mTextListCount = (TextView) view.findViewById(R.id.text_list_count);
     mTextListCount.setText("List count: "+getListAdapter().getCount());
-    
   }
   
   @Override
@@ -114,7 +110,6 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
   }
   
   public void setListAdapter() {
-    //mAdapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, data);
     mAdapter = new MyAdapter(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, new String[]{"first","set"});
     setListAdapter(mAdapter);
     getListView().setOnItemClickListener(new OnItemClickListener() {
@@ -149,7 +144,6 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
       view.setBackgroundColor(color);
       
       mTextListCount.setText("List count: "+getListAdapter().getCount());
-      Log.d("SheetSampleSheetFragment", "TextView trying to update");
     }
   }
   
@@ -167,18 +161,15 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     
     @Override
     public int getCount() {
-      //Log.d(TAG, "MyAdapter.getCount\t count:"+(mData != null ? mData.length : 0));
       return mData != null ? mData.length : 0;
     }
     
     public String getItem(int position) {
-      //Log.d(TAG, "MyAdapter.getItem\t position:"+position);
       return mData != null && mData.length > position ? mData[position] : "";
     }
     
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-      //Log.d(TAG, "MyAdapter.getView\t position:"+position);
       return super.getView(position, convertView, parent);
     }
   }

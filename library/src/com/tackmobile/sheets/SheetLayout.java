@@ -878,7 +878,6 @@ public class SheetLayout extends ViewGroup {
    */
   @Override
   public void addFocusables(ArrayList<View> views, int direction, int focusableMode) {
-    Log.d(TAG, "!!! addFocusables !!!");
     final int focusableCount = views.size();
 
     final int descendantFocusability = getDescendantFocusability();
@@ -920,7 +919,6 @@ public class SheetLayout extends ViewGroup {
   
   @Override
   public void addTouchables(ArrayList<View> views) {
-    Log.d(TAG, "!!! addTouchables !!!");
     // Note that we don't call super.addTouchables(), which means that
     // we don't call View.addTouchables(). This is okay because the
     // SheetLayout is not touchable
@@ -1370,12 +1368,8 @@ public class SheetLayout extends ViewGroup {
     for (int i = 0; i < size; ++i) {
       final View child = getChildAt(i);
       if (child.getVisibility() != GONE) {
-        //if (DEBUG)
-        //  Log.v(TAG, "Measuring\t #" + i + " " + child.getClass().getSimpleName());
-
         final LayoutParams lp = (LayoutParams) child.getLayoutParams();
         if (lp != null) {
-          Log.d(TAG, "Measuring child: "+i);
           final int widthSpec = MeasureSpec.makeMeasureSpec((int) (childWidthSize * lp.widthFactor), MeasureSpec.EXACTLY);
           child.measure(widthSpec, heightSpec);
           lp.needsMeasure = false;
