@@ -980,7 +980,6 @@ public class SheetLayout extends ViewGroup {
     sheetInfo.position = position;
     sheetInfo.sheetFragment = mAdapter.instantiateItem(this, position);
     sheetInfo.widthFactor = mAdapter.getSheetWidthFactor(position);
-    sheetInfo.needsLayout = true;
     if (index < 0 || index >= mItems.size()) {
       mItems.add(sheetInfo);
     } else {
@@ -1224,10 +1223,6 @@ public class SheetLayout extends ViewGroup {
       
       sheetInfo = infoForChild(child);
       if (sheetInfo != null) {
-        // Transfer needsLayout request to the LP, then discard
-        lp.needsLayout |= sheetInfo.needsLayout;
-        sheetInfo.needsLayout = false;
-
         // lp.childIndex = i;
         if (lp.widthFactor == 0.f) {
           // 0 means re-query the adapter for this, it doesn't have a valid width.
@@ -1286,7 +1281,6 @@ public class SheetLayout extends ViewGroup {
       
       if (mInLayout) {
         shadowLp.needsMeasure = true;
-        shadowLp.needsLayout = true;
         addViewInLayout(shadowView, index, shadowLp);
       } else {
         super.addView(shadowView, index, shadowLp);
@@ -1295,19 +1289,10 @@ public class SheetLayout extends ViewGroup {
     
     if (mInLayout) { // probably more like "mInMeasure"
       lp.needsMeasure = true;
-      lp.needsLayout = true;
       addViewInLayout(child, index, params);
     } else {
       super.addView(child, index, params);
     }
-    
-//    if (USE_CACHE) {
-//      if (child.getVisibility() != GONE) {
-//        child.setDrawingCacheEnabled(mScrollingCacheEnabled);
-//      } else {
-//        child.setDrawingCacheEnabled(false);
-//      }
-//    }
   }
   
   private View generateShadowView() {
@@ -1322,8 +1307,6 @@ public class SheetLayout extends ViewGroup {
     shadowView.setOnClickListener(mShadowClickListener);
     return shadowView;
   }
-  
-  
   
   @Override
   protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
@@ -1360,7 +1343,6 @@ public class SheetLayout extends ViewGroup {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    Log.d(TAG, "!!! onMeasure !!!");
     // For simple implementation, our internal size is always 0.
     // We depend on the container to specify the layout size of
     // our view. We can't really know what it is since we will be
@@ -1403,15 +1385,7 @@ public class SheetLayout extends ViewGroup {
   }
   
   @Override
-  protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    super.onSizeChanged(w, h, oldw, oldh);
-    Log.d(TAG, "!!! onSizeChanged !!!");
-  }
-
-  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    Log.d(TAG, "!!! onLayout !!!");
-    //final int count = getChildCount();
     final int count = mItems.size();
     
     final int width = r - l;
@@ -1459,12 +1433,9 @@ public class SheetLayout extends ViewGroup {
           childLeft = 0;
       }
       
-      if (lp.needsLayout) {
-        child.layout(childLeft, childTop, childLeft+child.getMeasuredWidth(), childTop+child.getMeasuredHeight());
-        lp.needsLayout = false;
-        if (shadow != null)
-          shadow.layout(l, t, r, b);
-      }
+      child.layout(childLeft, childTop, childLeft+child.getMeasuredWidth(), childTop+child.getMeasuredHeight());
+      if (shadow != null)
+        shadow.layout(l, t, r, b);
     }
     
     ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
@@ -1500,7 +1471,6 @@ public class SheetLayout extends ViewGroup {
 //      ViewCompat.postInvalidateOnAnimation(this);
 //    }
 //  }
-
 
   @Override
   public Parcelable onSaveInstanceState() {
@@ -1590,7 +1560,6 @@ public class SheetLayout extends ViewGroup {
     Fragment sheetFragment;
     int position;
     float widthFactor;
-    boolean needsLayout;
     View shadowView;
 
     /* Parcelable implementation */
@@ -1601,7 +1570,6 @@ public class SheetLayout extends ViewGroup {
     public SheetInfo(Parcel parcel) {
       position = parcel.readInt();
       widthFactor = parcel.readFloat();
-      needsLayout = true;
     }
 
     @SuppressWarnings("unused")
@@ -1620,7 +1588,6 @@ public class SheetLayout extends ViewGroup {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
       // Only save position and width factor. 
-      // Fragment is restored from adapter and needsLayout is always true after a restore state
       dest.writeInt(position);
       dest.writeFloat(widthFactor);
     }
@@ -1708,7 +1675,6 @@ public class SheetLayout extends ViewGroup {
      * before being positioned.
      */
     boolean needsMeasure;
-    boolean needsLayout;
 
     /**
      * Adapter position for this view

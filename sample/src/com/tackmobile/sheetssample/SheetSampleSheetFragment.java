@@ -148,20 +148,8 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
       int color = randomColorArgs.getInt(KEY_COLOR);
       view.setBackgroundColor(color);
       
-      //SheetSampleListView listView = (SheetSampleListView) getListView();
-      //listView.forceLayoutChildren();
       mTextListCount.setText("List count: "+getListAdapter().getCount());
-      mTextListCount.invalidate();
-      mTextListCount.forceLayout();
-      mTextListCount.requestFocus();
-      mTextListCount.buildDrawingCache();
-      mTextListCount.clearFocus();
-      mTextListCount.postInvalidate();
-      mTextListCount.setBackgroundColor(Color.WHITE);
       Log.d("SheetSampleSheetFragment", "TextView trying to update");
-      
-      view.refreshDrawableState();
-      view.invalidate();
     }
   }
   
