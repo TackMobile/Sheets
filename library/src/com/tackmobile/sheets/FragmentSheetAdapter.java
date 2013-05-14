@@ -24,6 +24,8 @@ public abstract class FragmentSheetAdapter {
   
   public static final int POSITION_NONE = -2;
 
+  private static final boolean DEBUG = false;
+
   private DataSetObservable mObservable = new DataSetObservable();
 
   private final FragmentManager mFragmentManager;
@@ -131,7 +133,7 @@ public abstract class FragmentSheetAdapter {
     }
     
     Fragment fragment = getItem(position);
-    if (BuildConfig.DEBUG) Log.v(TAG, "Adding item\t #" + position + " f=" + fragment);
+    if (DEBUG) Log.v(TAG, "Adding item\t #" + position + " f=" + fragment);
     if (mSavedStates.size() > position) {
       Fragment.SavedState fss = mSavedStates.get(position);
       if (fss != null) {
@@ -153,7 +155,7 @@ public abstract class FragmentSheetAdapter {
     if (mCurTransaction == null) {
       mCurTransaction = mFragmentManager.beginTransaction();
     }
-    if (BuildConfig.DEBUG) Log.v(TAG, "Removing item #" + position + ": f=" + f);
+    if (DEBUG) Log.v(TAG, "Removing item #" + position + ": f=" + f);
     while (mSavedStates.size() <= position) {
       mSavedStates.add(null);
     }

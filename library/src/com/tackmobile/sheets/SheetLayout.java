@@ -15,6 +15,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.MotionEventCompat;
+import android.support.v4.view.VelocityTrackerCompat;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewConfigurationCompat;
 import android.support.v4.widget.EdgeEffectCompat;
@@ -88,7 +89,11 @@ public class SheetLayout extends ViewGroup {
 
   private static final long DEFAULT_ANIM_DURATION = 150;
   
-  private static final long POP_DURATION = 150;
+  private static final long DEFAULT_POP_DURATION = 400;
+  
+  //private static final long MIN_SETTLE_DURATION = 100;
+  
+  private static final long MAX_SETTLE_DURATION = 600;
   
   
   //
@@ -128,6 +133,7 @@ public class SheetLayout extends ViewGroup {
   private float mLastMotionY;
   private float mInitialMotionX;
   private float mInitialMotionY;
+  private float mLastVelocityX;
 
   private int mActivePointerId = INVALID_POINTER;
 
@@ -135,6 +141,10 @@ public class SheetLayout extends ViewGroup {
    * Determines speed during touch scrolling
    */
   private VelocityTracker mVelocityTracker;
+  
+  //private int mFlingDistance;
+  
+  private int mMinimumVelocity;
   
   private int mMaximumVelocity;
   
@@ -236,8 +246,8 @@ public class SheetLayout extends ViewGroup {
     //final float density = context.getResources().getDisplayMetrics().density;
 
     mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(configuration);
+    mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
-    //mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
     //mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
     mRightEdge = new EdgeEffectCompat(context);
 
@@ -384,13 +394,11 @@ public class SheetLayout extends ViewGroup {
     // are dragging.
     if (action != MotionEvent.ACTION_DOWN) {
       if (mIsBeingDragged) {
-        if (DEBUG)
-          Log.v(TAG, "Intercept returning true! (mIsBeingDragged)");
+        if (DEBUG) Log.v(TAG, "Intercept returning true! (mIsBeingDragged)");
         return true;
       }
       if (mIsUnableToDrag) {
-        if (DEBUG)
-          Log.v(TAG, "Intercept returning false! (mIsUnableToDrag)");
+        if (DEBUG) Log.v(TAG, "Intercept returning false! (mIsUnableToDrag)");
         return false;
       }
     }
@@ -457,6 +465,7 @@ public class SheetLayout extends ViewGroup {
       mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
       mLastMotionX = mInitialMotionX = ev.getX();
       mLastMotionY = mInitialMotionY = ev.getY();
+      mLastVelocityX = 0;
       mIsUnableToDrag = false;
       if (thisTouchAllowed(ev)) {
         mIsUnableToDrag = false;
@@ -552,6 +561,7 @@ public class SheetLayout extends ViewGroup {
         // Remember where the motion event started
         mLastMotionX = mInitialMotionX = ev.getX();
         mLastMotionY = ev.getY();
+        mLastVelocityX = 0;
         mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
       //}
       break;
@@ -586,10 +596,11 @@ public class SheetLayout extends ViewGroup {
     case MotionEvent.ACTION_UP:
       //Log.d(TAG, "onTouchEvent ACTION_UP");
       if (mIsBeingDragged) {
+        final int pointerId = mActivePointerId;
         mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
         mPopulatePending = true;
         mActivePointerId = INVALID_POINTER;
-        endDrag();
+        endDrag(VelocityTrackerCompat.getXVelocity(mVelocityTracker, pointerId));
         needsInvalidate = mRightEdge.onRelease();
       }
       break;
@@ -703,25 +714,34 @@ public class SheetLayout extends ViewGroup {
   }
   
   private void endDrag() {
+    endDrag(0f);
+  }
+  
+  private void endDrag(float velocityX) {
     mIsBeingDragged = false;
     mIsUnableToDrag = false;
-
-    if (mVelocityTracker != null) {
-      mVelocityTracker.recycle();
-      mVelocityTracker = null;
-    }
+    mLastVelocityX = velocityX;
+    
+    if (DEBUG) Log.d(TAG, "endDrag :: velocityX = "+velocityX);
 
     // Check current item
     final int topPosition = getCurrentItemPosition();
     final SheetInfo topInfo = infoForPosition(topPosition);
-    final View topSheet = topInfo.sheetFragment.getView();
-    final float topX = ViewHelper.getX(topSheet);
-    final int clientWidth = getClientWidth();
-    final int halfSheetWidth = topSheet.getMeasuredWidth() / 2;
-    if (topX + halfSheetWidth > clientWidth && mAdapter != null) {
-      mAdapter.popSheetFragment(topPosition);
-    } else {
-      ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
+    if (topInfo != null && topInfo.sheetFragment != null && topInfo.sheetFragment.getView() != null) {
+      final View topSheet = topInfo.sheetFragment.getView();
+      final float topX = ViewHelper.getX(topSheet);
+      final int clientWidth = getClientWidth();
+      final int halfSheetWidth = topSheet.getMeasuredWidth() / 2;
+      if (velocityX >= 0 && (velocityX >= mMinimumVelocity || topX + halfSheetWidth > clientWidth) && mAdapter != null) {
+        mAdapter.popSheetFragment(topPosition);
+      } else {
+        ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
+      }
+    }
+
+    if (mVelocityTracker != null) {
+      mVelocityTracker.recycle();
+      mVelocityTracker = null;
     }
   }
   
@@ -733,10 +753,14 @@ public class SheetLayout extends ViewGroup {
     View child;
     LayoutParams lp;
     ArrayList<SheetInfo> remaining = new ArrayList<SheetInfo>();
+    long popDuration = DEFAULT_POP_DURATION;
+    float velocity = mLastVelocityX;
+    mLastVelocityX = 0;
     
     count = mItems.size();
     for (index=0; index<count; index++) {
-      /* Size can change during loop if back is pressed multiple times really fast so 
+      /* 
+      * Size can change during loop if back is pressed multiple times really fast so 
       *  we must validate size at beginning of each loop execution
       */
       if (index >= mItems.size()) break;
@@ -750,16 +774,28 @@ public class SheetLayout extends ViewGroup {
       
       lp = (LayoutParams) child.getLayoutParams();
       
+      
       if (lp.shouldPop) {
+        float distance = clientWidth - ViewHelper.getX(child);
+        
+        if (velocity > 0) {
+          popDuration = 4 * Math.round(1000 * Math.abs(distance / velocity));
+        } else {
+          popDuration = DEFAULT_POP_DURATION;
+        }
+        
+        popDuration = Math.min(MAX_SETTLE_DURATION, popDuration);
+        if (DEBUG) Log.d(TAG, "updateSheetsAnimated (pop) :: distance="+distance+"\tvelocity="+velocity+"\tpopDuration = "+popDuration);
+        
         ViewPropertyAnimator.animate(child)
           .setInterpolator(sInterpolator)
-          .setDuration(POP_DURATION)
+          .setDuration(popDuration)
           .setListener(mSheetAnimationListener)
           .x(clientWidth);
         if (info.shadowView != null) {
           ViewPropertyAnimator.animate(info.shadowView)
             .setInterpolator(sInterpolator)
-            .setDuration(POP_DURATION)
+            .setDuration(popDuration)
             .alpha(0);
         }
       } else {
@@ -1409,27 +1445,30 @@ public class SheetLayout extends ViewGroup {
       if (lp.needsMeasure) {
         final int widthSpec = MeasureSpec.makeMeasureSpec((int) (clientWidth * lp.widthFactor), MeasureSpec.EXACTLY);
         child.measure(widthSpec, heightSpec);
-        childLeft = clientWidth;
         lp.needsMeasure = false;
         
         if (shadow != null)
           shadow.measure(widthSpec, heightSpec);
       }
       
-      if (isTop) {
-        childLeft = clientWidth;
-        isTop = false;
-      } else {
-        final float currX = ViewHelper.getX(child);
-        if (0 <= currX && currX < clientWidth)
-          childLeft = (int) currX;
-        else
+      childLeft = (int) ViewHelper.getX(child);
+      if (lp.needsInitialLayout && !lp.isShadowLayer) {
+        if (isTop) {
+          childLeft = clientWidth;
+          isTop = false;
+        } else {
           childLeft = 0;
+        }
+        lp.needsInitialLayout = false;
       }
       
+      if (DEBUG) Log.d(TAG, "onLayout child["+i+"].x = "+childLeft);
       child.layout(childLeft, childTop, childLeft+child.getMeasuredWidth(), childTop+child.getMeasuredHeight());
-      if (shadow != null)
+      ViewHelper.setX(child, childLeft);
+      if (shadow != null) {
         shadow.layout(l, t, r, b);
+        ViewHelper.setX(shadow, l);
+      }
     }
     
     ViewCompat.postOnAnimation(this, mUpdateSheetsRunnable);
@@ -1669,6 +1708,12 @@ public class SheetLayout extends ViewGroup {
      * before being positioned.
      */
     boolean needsMeasure;
+    
+    /**
+     * true if this view was just added and needs an initial layout placement,
+     * otherwise onLayout shouldn't change the placement
+     */
+    boolean needsInitialLayout;
 
     /**
      * Adapter position for this view
@@ -1693,6 +1738,7 @@ public class SheetLayout extends ViewGroup {
 
     public LayoutParams(Context context, AttributeSet attrs) {
       super(context, attrs);
+      needsInitialLayout = true;
     }
   }
 
