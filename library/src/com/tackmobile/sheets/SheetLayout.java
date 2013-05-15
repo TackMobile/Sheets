@@ -1041,7 +1041,7 @@ public class SheetLayout extends ViewGroup {
     for (int i = 0; i < mItems.size(); i++) {
       sheetInfo = mItems.get(i);
       fragView = (ViewGroup) sheetInfo.sheetFragment.getView();
-      if (fragView == child || fragView.getChildAt(0) == child) {
+      if (fragView != null && (fragView == child || fragView.getChildAt(0) == child)) {
         return sheetInfo;
       }
     }
