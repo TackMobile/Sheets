@@ -241,6 +241,8 @@ public class SheetLayout extends ViewGroup {
     //setWillNotDraw(false);
     //setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     setFocusable(false);
+    setClipChildren(false);
+    setClipToPadding(false);
 
     final ViewConfiguration configuration = ViewConfiguration.get(context);
     //final float density = context.getResources().getDisplayMetrics().density;
