@@ -113,6 +113,7 @@ public abstract class FragmentSheetAdapter {
   
   public void removeAllFragments() {
     mFragments.clear();
+    mSavedStates.clear();;
     notifyDataSetChanged();
   }
   
@@ -164,6 +165,14 @@ public abstract class FragmentSheetAdapter {
       mFragments.set(position, null);
 
     mCurTransaction.remove(f);
+  }
+
+  public void destroySavedStates(int position) {
+    if (position < 0) return;
+    int size = mSavedStates.size();
+    while (size > position) {
+      mSavedStates.remove(--size);
+    }
   }
 
   public void startUpdate(ViewGroup container) {

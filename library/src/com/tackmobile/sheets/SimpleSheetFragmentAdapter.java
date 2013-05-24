@@ -53,6 +53,7 @@ public class SimpleSheetFragmentAdapter extends FragmentSheetAdapter implements 
 
     mDescriptors.remove(position);
     removeFragmentAtPosition(position);
+    destroySavedStates(position);
   }
 
   @Override
