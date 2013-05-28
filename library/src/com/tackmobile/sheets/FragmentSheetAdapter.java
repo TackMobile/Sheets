@@ -16,7 +16,7 @@ public abstract class FragmentSheetAdapter {
   
   private static final String TAG = "FragmentSheetAdapter";
   
-  private static final float DEFAULT_SHEET_WIDTH_FACTOR = 0.75f;
+  public static final float DEFAULT_SHEET_WIDTH_FACTOR = 0.75f;
 
   public static final String KEY_SHEET_WIDTH = "com.tackmobile.sheets.KEY_SHEET_WIDTH";
   
