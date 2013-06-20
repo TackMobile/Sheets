@@ -643,7 +643,7 @@ public class SheetLayout extends ViewGroup {
     
     final int topPosition = getCurrentItemPosition();
     final SheetInfo topInfo = infoForPosition(topPosition);
-    if (topInfo.sheetFragment == null) return false;
+    if (topInfo == null || topInfo.sheetFragment == null) return false;
 
     final View topChild = topInfo.sheetFragment.getView();
     if (topChild == null) return false;
