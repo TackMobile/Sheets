@@ -15,6 +15,7 @@ import android.view.View;
 
 import com.tackmobile.sheets.SheetLayout;
 import com.tackmobile.sheets.SimpleSheetFragmentAdapter;
+import com.tackmobile.sheets.SheetDescriptor;
 
 public class SheetSampleMainActivity extends FragmentActivity {
 
@@ -23,7 +24,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
   public static final String ACTION_ADD_SHEET = "com.tackmobile.sheets.ACTION_ADD_SHEET";
 
   public static final String ACTION_POP_SHEET = "com.tackmobile.sheets.ACTION_POP_SHEET";
-  
+
   public static final String ACTION_POP_ALL_SHEETS = "com.tackmobile.sheets.ACTION_POP_ALL_SHEETS";
 
   public static final String EXTRA_SHEET_CLASS_NAME = "com.tackmobile.sheets.EXTRA_SHEET_CLASS";
@@ -74,7 +75,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
       return super.dispatchKeyEvent(event);
     }
   }
-  
+
   public void addSheetExplicitly(View view) {
     Bundle args = SheetSampleSheetFragment.getRandomColorArgs();
     mAdapter.addSheetFragment(SheetSampleSheetFragment.class, args);
@@ -123,7 +124,7 @@ public class SheetSampleMainActivity extends FragmentActivity {
     @Override
     public void onReceive(Context context, Intent intent) {
       if (mAdapter == null) return;
-      
+
       String intentAction = intent.getAction();
       if (ACTION_POP_SHEET.equals(intentAction)) {
         mAdapter.popSheetFragment(mAdapter.getCount() - 1);
@@ -132,12 +133,12 @@ public class SheetSampleMainActivity extends FragmentActivity {
       }
     }
   };
-  
+
   private static class SampleSheetAdapter extends SimpleSheetFragmentAdapter {
     public SampleSheetAdapter(Context context, FragmentManager fm) {
       super(context, fm);
     }
-    
+
     @Override
     public void addSheetFragment(SheetDescriptor descriptor) {
       descriptor.args.putInt(KEY_VIEW_INDEX, getCount());

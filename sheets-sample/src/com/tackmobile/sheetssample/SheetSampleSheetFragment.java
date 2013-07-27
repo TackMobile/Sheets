@@ -18,7 +18,7 @@ import android.widget.Toast;
 
 import com.tackmobile.sheets.ISheetFragment;
 import com.tackmobile.sheets.ISheetListener;
-import com.tackmobile.sheets.SimpleSheetFragmentAdapter.SheetDescriptor;
+import com.tackmobile.sheets.SheetDescriptor;
 
 public class SheetSampleSheetFragment extends ListFragment implements ISheetFragment {
 
@@ -30,11 +30,11 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
   private ISheetListener mListener;
 
   private MyAdapter mAdapter;
-  
+
   private TextView mTextListCount;
 
   private DataSetObserver mObserver;
-  
+
   @Override
   public void setSheetListener(ISheetListener listener) {
     mListener = listener;
@@ -48,12 +48,12 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
   @Override
   public void onViewCreated(View view, Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
-    
+
     Bundle args = getArguments();
     if (args != null && args.containsKey(KEY_COLOR)) {
       view.setBackgroundColor(args.getInt(KEY_COLOR, Color.WHITE));
     }
-    
+
     view.findViewById(R.id.btn_add_sheet).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
@@ -70,7 +70,7 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
           mListener.popTopSheetFragment();
       }
     });
-    
+
     view.findViewById(R.id.btn_pop_all_sheets).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
@@ -82,13 +82,13 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     int viewIndex = args.getInt(SheetSampleMainActivity.KEY_VIEW_INDEX);
     TextView textViewIndex = (TextView) view.findViewById(R.id.text_view_index);
     textViewIndex.setText("View Index : "+viewIndex);
-    
+
     setListAdapter();
-    
+
     mTextListCount = (TextView) view.findViewById(R.id.text_list_count);
     mTextListCount.setText("List count: "+getListAdapter().getCount());
   }
-  
+
   @Override
   public void onResume() {
     super.onResume();
@@ -101,14 +101,14 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     getListAdapter().registerDataSetObserver(mObserver);
 
   }
-  
+
   @Override
   public void onPause() {
     super.onPause();
     getListAdapter().unregisterDataSetObserver(mObserver);
     mObserver = null;
   }
-  
+
   public void setListAdapter() {
     mAdapter = new MyAdapter(getActivity(), android.R.layout.simple_list_item_1, android.R.id.text1, new String[]{"first","set"});
     setListAdapter(mAdapter);
@@ -119,7 +119,7 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
       }
     });
   }
-  
+
   @Override
   public void onActivityCreated(Bundle savedInstanceState) {
     super.onActivityCreated(savedInstanceState);
@@ -132,42 +132,42 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
       }
     }, 3 * DateUtils.SECOND_IN_MILLIS);
   }
-  
+
   void updateData() {
     mAdapter.update(data);
-    
+
     if (isResumed()) {
       final View view = getView();
-      
+
       Bundle randomColorArgs = getRandomColorArgs();
       int color = randomColorArgs.getInt(KEY_COLOR);
       view.setBackgroundColor(color);
-      
+
       mTextListCount.setText("List count: "+getListAdapter().getCount());
     }
   }
-  
+
   class MyAdapter extends ArrayAdapter<String> {
     String[] mData;
     public MyAdapter(Context context, int layout, int res, String[] data) {
       super(context, layout, res, data);
       mData = data;
     }
-    
+
     public void update(String[] data) {
       mData = data;
       notifyDataSetChanged();
     }
-    
+
     @Override
     public int getCount() {
       return mData != null ? mData.length : 0;
     }
-    
+
     public String getItem(int position) {
       return mData != null && mData.length > position ? mData[position] : "";
     }
-    
+
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
       return super.getView(position, convertView, parent);
@@ -185,5 +185,5 @@ public class SheetSampleSheetFragment extends ListFragment implements ISheetFrag
     args.putInt(SheetSampleSheetFragment.KEY_COLOR, color);
     return args;
   }
-  
+
 }
