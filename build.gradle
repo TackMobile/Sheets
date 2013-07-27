@@ -1,0 +1,13 @@
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath 'com.android.tools.build:gradle:0.5.+' }
+}
+
+apply plugin: 'android-reporting'
+
+/*project(':sheets-sample') {
+  dependencies {
+    compile 'com.android.support:support-v4:13.0.+'
+    compile project(':sheets-library')
+  }
+}*/

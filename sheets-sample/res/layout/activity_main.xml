@@ -32,7 +32,7 @@
 	<com.tackmobile.sheets.SheetLayout
 		android:id="@+id/sheet_layout"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		tack:shadowsEnabled="true" />
+		android:layout_height="match_parent" />
+		<!-- tack:shadows_enabled="true" />  -->
 
 </RelativeLayout>
