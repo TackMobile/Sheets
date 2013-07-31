@@ -1,34 +1,60 @@
 buildscript {
-    repositories { mavenCentral() }
-    dependencies { classpath 'com.android.tools.build:gradle:0.5.+' }
+  repositories { mavenCentral() }
+  dependencies { classpath 'com.android.tools.build:gradle:0.5.+' }
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '1.6'
+  gradleVersion = '1.6'
 }
 
-apply plugin:'android-library'
+apply plugin: 'android-library'
+apply plugin: 'maven'
 
 archivesBaseName = 'sheets'
 
-repositories {
-    mavenCentral()
+configurations {
+  deployerJars
 }
 
+repositories {
+  mavenCentral()
+}
+
+version '0.1'
+group 'com.tackmobile.android'
+
 dependencies {
-    compile 'com.android.support:support-v4:13.0.+'
-    compile 'com.nineoldandroids:library:2.4.0'
+  compile 'com.android.support:support-v4:13.0.+'
+  compile 'com.nineoldandroids:library:2.4.0'
+  deployerJars "org.kuali.maven.wagons:maven-s3-wagon:1.1.20"
 }
 
 android {
-    compileSdkVersion 17
-    buildToolsVersion '17.0.0'
+  compileSdkVersion 17
+  buildToolsVersion '17.0.0'
 
-    sourceSets {
-        main {
-            manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs = ['src']
-            res.srcDirs = ['res']
-        }
+  sourceSets {
+    main {
+      manifest.srcFile 'AndroidManifest.xml'
+      java.srcDirs = ['src']
+      res.srcDirs = ['res']
     }
+  }
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      configuration = configurations.deployerJars
+      repository(url: "s3://tack-maven/snapshot"){
+        authentication(userName: tackAccessKey, password: tackSecretKey)
+      }
+    }
+    /*mavenDeployer {
+      configuration = configurations.deployerJars
+      repository(url: "s3://tack-maven/releases"){
+        authentication(userName: tackAccessKey, password: tackSecretKey)
+      }
+    }*/
+  }
 }
